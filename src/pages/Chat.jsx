@@ -1,102 +1,181 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useContext, useRef } from "react";
 import API from "../api";
+import { AuthContext } from "../context/AuthContext";
+import { NotificationContext } from "../context/NotificationContext";
 import PageShell from "../components/PageShell";
 import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
+import { io } from "socket.io-client";
 
 function Chat() {
+  const { user } = useContext(AuthContext);
+  const { chatNotifications, clearUnread } = useContext(NotificationContext);
+  
+  const [teams, setTeams] = useState([]);
+  const [selectedTeam, setSelectedTeam] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  const scrollRef = useRef(null);
+  const socketRef = useRef(null);
 
   const showToast = (type, title, message) => setToast({ type, title, message });
 
-  // Hard-coded to team 1 for now — future: derive from user context
-  const teamId = 1;
-
-  const fetchMessages = useCallback(async () => {
-    try {
-      const res = await API.get(`/chat/${teamId}`);
-      setMessages(res.data || []);
-    } catch (err) {
-      showToast("error", "Failed to load messages", err.response?.data?.error || "Connection error");
-    }
-  }, [teamId]);
-
-  // Fetch on mount
+  // Load teams
   useEffect(() => {
+    const loadTeams = async () => {
+      try {
+        const res = await API.get("/teams");
+        const teamList = res.data || [];
+        setTeams(teamList);
+        if (teamList.length > 0) {
+          setSelectedTeam(teamList[0]);
+        }
+      } catch (err) {
+        showToast("error", "Failed to load teams", "Could not fetch your teams.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTeams();
+  }, []);
+
+  // Socket connection for real-time messages
+  useEffect(() => {
+    socketRef.current = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
+    
+    socketRef.current.on("new_message", (msg) => {
+      if (selectedTeam && String(msg.team_id) === String(selectedTeam.id)) {
+        setMessages(prev => [msg, ...prev]);
+        clearUnread(selectedTeam.id);
+      }
+    });
+
+    return () => socketRef.current.disconnect();
+  }, [selectedTeam, clearUnread]);
+
+  // Load messages when team changes
+  useEffect(() => {
+    if (!selectedTeam) return;
+
+    const fetchMessages = async () => {
+      try {
+        const res = await API.get(`/chat/${selectedTeam.id}`);
+        setMessages(res.data || []);
+        clearUnread(selectedTeam.id);
+      } catch (err) {
+        showToast("error", "Failed to load messages", "Connection error");
+      }
+    };
+
     fetchMessages();
-  }, [fetchMessages]);
+    socketRef.current?.emit("join_team", selectedTeam.id);
+  }, [selectedTeam, clearUnread]);
+
+  // Scroll to bottom on new message
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const sendMessage = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !selectedTeam) return;
     try {
-      await API.post("/chat", { team_id: teamId, message: text.trim() });
+      await API.post("/chat", { team_id: selectedTeam.id, message: text.trim() });
       setText("");
-      showToast("success", "Message sent", "Your message is live.");
-      await fetchMessages();
+      // Local addition for speed (though socket will also handle it)
+      // fetchMessages(); // handled by socket event now
     } catch (err) {
       showToast("error", "Send failed", err.response?.data?.error || "Message could not be sent");
     }
   };
 
   return (
-    <PageShell title="Team Chat">
-      <div style={{ maxWidth: 800, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-
-        {/* Messages area */}
-        <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
-          <div
-            style={{
-              height: 420,
-              overflowY: "auto",
-              padding: "16px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}
-          >
-            {messages.length === 0 ? (
-              <EmptyState icon="💬" text="No messages yet. Start the conversation!" />
-            ) : (
-              messages.map((m) => (
-                <div
-                  key={m.id}
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: "var(--radius-sm)",
-                    background: "var(--bg3)",
-                    border: "1px solid var(--border)",
-                  }}
+    <PageShell title="Team Chat" noPad>
+      <div className="chat-container">
+        
+        {/* Left Sidebar: Teams */}
+        <div className="chat-sidebar">
+          <div className="chat-sidebar-header">Teams</div>
+          <div className="chat-list">
+            {teams.map(t => (
+              <div 
+                key={t.id} 
+                className={`chat-list-item ${selectedTeam?.id === t.id ? 'active' : ''}`}
+                onClick={() => setSelectedTeam(t)}
+              >
+                <div 
+                  className="member-avatar" 
+                  style={{ width: 36, height: 36, background: "rgba(124,106,255,0.15)", color: "var(--accent2)", fontSize: 14 }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent2)" }}>
-                      👤 {m.email}
-                    </span>
-                    <span style={{ fontSize: 11, color: "var(--text3)", fontFamily: "'JetBrains Mono', monospace" }}>
-                      {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "just now"}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 14, lineHeight: 1.5 }}>{m.message}</div>
+                  {t.name.slice(0, 2).toUpperCase()}
                 </div>
-              ))
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{t.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--text3)" }}>{t.admin_name || 'Team Chat'}</div>
+                </div>
+                {chatNotifications[t.id] > 0 && (
+                  <span className="sidebar-badge">{chatNotifications[t.id]}</span>
+                )}
+              </div>
+            ))}
+            {teams.length === 0 && !loading && (
+              <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
+                You are not in any teams.
+              </div>
             )}
           </div>
         </div>
 
-        {/* Compose area */}
-        <div style={{ display: "flex", gap: 10 }}>
-          <input
-            className="form-input"
-            style={{ flex: 1 }}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Type your message..."
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-          />
-          <button className="btn-sm btn-accent" style={{ padding: "10px 20px" }} onClick={sendMessage}>
-            Send 📤
-          </button>
+        {/* Main Chat Area */}
+        <div className="chat-main">
+          {selectedTeam ? (
+            <>
+              <div className="chat-messages" ref={scrollRef}>
+                {messages.length === 0 ? (
+                  <EmptyState icon="💬" text={`Welcome to ${selectedTeam.name} chat!`} />
+                ) : (
+                  [...messages].reverse().map((m) => {
+                    const isMine = String(m.sender_id) === String(user?.id);
+                    return (
+                      <div key={m.id} className={`message-row ${isMine ? 'mine' : 'others'}`}>
+                        {!isMine && (
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent2)", marginBottom: 4, marginLeft: 4 }}>
+                            {m.name || m.email}
+                          </div>
+                        )}
+                        <div className="message-bubble">
+                          {m.message}
+                        </div>
+                        <div className="message-info">
+                          {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="chat-footer">
+                <input
+                  className="form-input"
+                  style={{ flex: 1 }}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={`Message ${selectedTeam.name}...`}
+                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                />
+                <button className="btn-sm btn-accent" style={{ padding: "10px 20px" }} onClick={sendMessage}>
+                  Send 📤
+                </button>
+              </div>
+            </>
+          ) : (
+            <EmptyState icon="👋" text="Select a team to start chatting" />
+          )}
         </div>
       </div>
 
