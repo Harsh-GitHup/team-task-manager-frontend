@@ -388,6 +388,7 @@ html {
 .content {
   flex: 1;
   padding: 24px;
+  margin-top: 58px;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1028,6 +1029,10 @@ html {
     margin-left: 0;
     width: 100%;
   }
+
+  .topbar {
+    left: 0;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -1043,9 +1048,11 @@ html {
   gap: 16px;
   background: rgba(10, 10, 15, 0.8);
   backdrop-filter: blur(12px);
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 5;
+  right: 0;
+  left: 240px;
+  z-index: 50;
 }
 
 .topbar-title {
