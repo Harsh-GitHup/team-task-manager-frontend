@@ -2,9 +2,11 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
+import { NotificationContext } from "../context/NotificationContext";
 
 function Sidebar() {
   const { user, logout } = useContext(AuthContext);
+  const { unreadCount } = useContext(NotificationContext);
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
@@ -60,6 +62,9 @@ function Sidebar() {
           >
             <span className="nav-item-icon">{item.icon}</span>
             <span>{item.label}</span>
+            {item.to === "/chat" && unreadCount > 0 && (
+              <span className="sidebar-badge">{unreadCount}</span>
+            )}
           </NavLink>
         ))}
         {user?.role === "admin" && (
