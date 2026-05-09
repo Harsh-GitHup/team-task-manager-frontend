@@ -1,50 +1,113 @@
-import { Link } from "react-router-dom";
-import { useContext } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useContext, useEffect, useState } from "react";
+import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 
 function Sidebar() {
   const { user, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+  const [projects, setProjects] = useState([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
+
+  const navItems = [
+    { to: "/", icon: "🏠", label: "Dashboard" },
+    { to: "/projects", icon: "📁", label: "Projects" },
+    { to: "/tasks", icon: "✅", label: "My Tasks" },
+    { to: "/team-members", icon: "👥", label: "Team Members" },
+    { to: "/chat", icon: "💬", label: "Chat" },
+  ];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProjects = async () => {
+      try {
+        const res = await API.get("/projects");
+        if (!cancelled) setProjects(res.data || []);
+      } catch (error) {
+        if (!cancelled) setProjects([]);
+      } finally {
+        if (!cancelled) setLoadingProjects(false);
+      }
+    };
+
+    loadProjects();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
-    <div className="w-64 border-r border-slate-800 bg-gradient-to-b from-slate-950 to-slate-900 shadow-2xl shadow-black/40 h-screen p-6 flex flex-col">
-      <div className="mb-8 pb-6 border-b border-slate-800">
-        <div className="inline-block p-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl mb-3">
-          <span className="text-white font-bold text-lg">✓</span>
+    <aside className="sidebar">
+      <div className="sidebar-header">
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon">⚡</div>
+          <div>
+            <div className="sidebar-logo-text">TaskFlow</div>
+            <div style={{ fontSize: 11, color: "var(--text3)" }}>Operate your workspace</div>
+          </div>
         </div>
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">TaskHub</h2>
-        <p className="text-xs text-slate-500 mt-1">Manage your team</p>
       </div>
 
-      <nav className="flex-1 flex flex-col gap-2">
-        <Link to="/" className="rounded-xl px-4 py-3 transition duration-200 flex items-center gap-3 text-slate-300 hover:bg-slate-800/60 hover:text-cyan-300 hover:border-l-4 hover:border-cyan-400 group">
-          <span className="text-lg">📊</span>
-          <span className="font-medium">Dashboard</span>
-        </Link>
-        <Link to="/projects" className="rounded-xl px-4 py-3 transition duration-200 flex items-center gap-3 text-slate-300 hover:bg-slate-800/60 hover:text-cyan-300 hover:border-l-4 hover:border-cyan-400">
-          <span className="text-lg">📁</span>
-          <span className="font-medium">Projects</span>
-        </Link>
-        <Link to="/tasks" className="rounded-xl px-4 py-3 transition duration-200 flex items-center gap-3 text-slate-300 hover:bg-slate-800/60 hover:text-cyan-300 hover:border-l-4 hover:border-cyan-400">
-          <span className="text-lg">✅</span>
-          <span className="font-medium">Tasks</span>
-        </Link>
-        <Link to="/chat" className="rounded-xl px-4 py-3 transition duration-200 flex items-center gap-3 text-slate-300 hover:bg-slate-800/60 hover:text-cyan-300 hover:border-l-4 hover:border-cyan-400">
-          <span className="text-lg">💬</span>
-          <span className="font-medium">Chat</span>
-        </Link>
+      <div className="sidebar-section">
+        <div className="sidebar-section-label">Main</div>
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === "/"}
+            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+          >
+            <span className="nav-item-icon">{item.icon}</span>
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
         {user?.role === "admin" && (
-          <Link to="/admin" className="rounded-xl px-4 py-3 transition duration-200 flex items-center gap-3 text-slate-300 hover:bg-slate-800/60 hover:text-cyan-300 hover:border-l-4 hover:border-cyan-400">
-            <span className="text-lg">🛠️</span>
-            <span className="font-medium">Admin Center</span>
-          </Link>
+          <NavLink to="/admin" className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
+            <span className="nav-item-icon">🛠️</span>
+            <span>Admin Center</span>
+          </NavLink>
         )}
-      </nav>
-      <button
-        onClick={logout}
-        className="w-full rounded-xl bg-gradient-to-r from-rose-500 to-red-500 px-4 py-3 text-white font-semibold transition hover:shadow-lg hover:shadow-rose-500/40 hover:-translate-y-0.5 duration-200 flex items-center justify-center gap-2"
-      >
-        <span>🚪</span> Logout
-      </button>
-    </div>
+      </div>
+
+      <div className="sidebar-section sidebar-projects">
+        <div className="sidebar-section-label">Projects</div>
+        {loadingProjects ? (
+          <div className="loading-shell" style={{ minHeight: 88 }}>
+            <div className="loading-card" style={{ width: "100%", justifyContent: "center" }}>
+              <div className="loader" />
+              <span>Loading projects...</span>
+            </div>
+          </div>
+        ) : projects.length === 0 ? (
+          <div style={{ padding: "8px 10px", color: "var(--text3)", fontSize: 13 }}>No projects yet</div>
+        ) : (
+          projects.map((project) => (
+            <div key={project.id} className="project-item" onClick={() => navigate(`/projects/${project.id}`)}>
+              <span className="project-dot" style={{ background: project.color || "var(--accent)" }} />
+              <span className="truncate">{project.title}</span>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="sidebar-footer">
+        <div className="user-card">
+          <div className="user-avatar" style={{ background: "rgba(124,106,255,0.18)", color: "var(--accent2)" }}>
+            {user?.name?.slice(0, 2)?.toUpperCase()}
+          </div>
+          <div className="user-info">
+            <div className="user-name">{user?.name}</div>
+            <div className="user-role">
+              {user?.role === 'admin' ? '⚡ Admin' : user?.role === 'head' ? '🔰 Head' : '👤 Member'}
+            </div>
+          </div>
+          <button className="logout-btn" onClick={logout} type="button">
+            Logout
+          </button>
+        </div>
+      </div>
+    </aside>
   );
 }
 
