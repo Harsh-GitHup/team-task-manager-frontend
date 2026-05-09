@@ -4,8 +4,10 @@ import { AuthContext } from "./context/AuthContext";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 import Tasks from "./pages/Tasks";
 import Chat from "./pages/Chat";
+import TeamMembers from "./pages/TeamMembers";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Admin from "./pages/Admin";
@@ -17,16 +19,33 @@ function App() {
   return (
     <BrowserRouter>
       {isAuthenticated ? (
-        <div className="min-h-screen bg-slate-950 text-slate-100">
-          <div className="flex min-h-screen">
+        <div className="app-shell">
+          <div
+            style={{
+              pointerEvents: "none",
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse 800px 600px at 50% 30%, rgba(124,106,255,0.12) 0%, transparent 70%)",
+              opacity: 0.3,
+            }}
+          />
+          <div className="app-shell-inner">
             <Sidebar />
-            <div className="flex-1 p-6 sm:p-8 bg-slate-950/95">
+            <div className="app-shell-main">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/projects" element={<Projects />} />
+                <Route path="/projects/:id" element={<ProjectDetail />} />
                 <Route path="/tasks" element={<Tasks />} />
+                <Route path="/team-members" element={<TeamMembers />} />
                 <Route path="/chat" element={<Chat />} />
-                <Route path="/admin" element={user?.role === "admin" ? <Admin /> : <Navigate to="/" />} />
+                <Route
+                  path="/admin"
+                  element={
+                    user?.role === "admin" ? <Admin /> : <Navigate to="/" />
+                  }
+                />
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </div>
