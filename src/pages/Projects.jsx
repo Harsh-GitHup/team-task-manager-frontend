@@ -1,126 +1,209 @@
 import { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
+import PageShell from "../components/PageShell";
+import Modal from "../components/Modal";
+import EmptyState from "../components/EmptyState";
+import Toast from "../components/Toast";
+import LoadingState from "../components/LoadingState";
+import ProjectForm from "../components/ProjectForm";
 
+// ─────────────────────────────────────────────────────────
+//  Single project card
+// ─────────────────────────────────────────────────────────
+function ProjectCard({ project, taskCount, done, onEdit, onDelete, onClick }) {
+  const pct = taskCount ? Math.round((done / taskCount) * 100) : 0;
+  const color = project.color || "var(--accent)";
+
+  return (
+    <div className="project-card" onClick={onClick} style={{ position: "relative" }}>
+      {/* Edit / delete actions */}
+      {(onEdit || onDelete) && (
+        <div
+          style={{ position: "absolute", top: 14, right: 14, display: "flex", gap: 6 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onEdit && <button className="icon-btn edit" onClick={onEdit}>✎</button>}
+          {onDelete && <button className="icon-btn del" onClick={onDelete}>Del</button>}
+        </div>
+      )}
+
+      {/* Top colour accent */}
+      <div style={{ height: 3, background: `linear-gradient(90deg, ${color}, rgba(255,255,255,0.18))`, borderRadius: 3, marginBottom: 16, opacity: 0.8 }} />
+
+      <div className="project-card-top">
+        <span className="project-emoji">{project.emoji || "📁"}</span>
+        <span className="project-name">{project.title}</span>
+      </div>
+
+      <p className="project-desc">{project.description || "No description"}</p>
+
+      {/* Progress */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text2)", marginBottom: 5 }}>
+          <span>Progress</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{pct}%</span>
+        </div>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}, rgba(255,255,255,0.2))` }} />
+        </div>
+      </div>
+
+      <div className="project-stats">
+        <span><strong>{taskCount}</strong> tasks</span>
+        <span><strong>{done}</strong> done</span>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+//  Main page
+// ─────────────────────────────────────────────────────────
 function Projects() {
   const { user } = useContext(AuthContext);
-  const [projects, setProjects] = useState([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const navigate = useNavigate();
 
-  // ✅ FIXED useEffect
+  const [projects, setProjects] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const showToast = (type, title, message) => setToast({ type, title, message });
+
+  const refreshProjects = async () => {
+    const res = await API.get("/projects");
+    setProjects(res.data || []);
+  };
+
   useEffect(() => {
-    const fetchProjects = async () => {
+    const load = async () => {
       try {
-        const res = await API.get("/projects");
-        setProjects(res.data);
+        const [pRes, tRes, tmRes] = await Promise.all([
+          API.get("/projects"),
+          API.get("/tasks"),
+          API.get("/teams"),
+        ]);
+        setProjects(pRes.data || []);
+        setTasks(tRes.data || []);
+        setTeams(tmRes.data || []);
       } catch (err) {
-        console.log(err);
+        showToast("error", "Could not load projects", err.response?.data?.error || "Please try again.");
+      } finally {
+        setLoading(false);
       }
     };
-
-    fetchProjects();
+    load();
   }, []);
 
-  // ✅ Add Project
-  const addProject = async () => {
-    if (!title || !description) {
-      alert("Fill all fields");
-      return;
-    }
+  const openCreate = () => { setEditingProject(null); setModalOpen(true); };
+  const openEdit = (p) => { setEditingProject(p); setModalOpen(true); };
+  const closeModal = () => { setModalOpen(false); setEditingProject(null); };
 
+  const saveProject = async (form) => {
     try {
-      await API.post("/projects", {
-        title,
-        description,
-      });
-
-      setTitle("");
-      setDescription("");
-
-      // refresh
-      const res = await API.get("/projects");
-      setProjects(res.data);
+      if (editingProject) {
+        await API.put(`/projects/${editingProject.id}`, { title: form.title, description: form.description, team_id: form.team_id, color: form.color });
+        showToast("success", "Project updated", `${form.title} was saved.`);
+      } else {
+        await API.post("/projects", { title: form.title, description: form.description, team_id: form.team_id, color: form.color });
+        showToast("success", "Project created", `${form.title} was created.`);
+      }
+      closeModal();
+      await refreshProjects();
     } catch (err) {
-      console.log(err);
+      showToast("error", editingProject ? "Update failed" : "Creation failed", err.response?.data?.error || "Please try again.");
     }
   };
 
+  const deleteProject = async (project, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${project.title}"? This removes all tasks in the project.`)) return;
+    try {
+      await API.delete(`/projects/${project.id}`);
+      showToast("success", "Project deleted", `${project.title} was removed.`);
+      await refreshProjects();
+      const tRes = await API.get("/tasks");
+      setTasks(tRes.data || []);
+    } catch (err) {
+      showToast("error", "Delete failed", err.response?.data?.error || "Please try again.");
+    }
+  };
+
+  const canModify = (p) => user?.role === "admin" || String(p.created_by) === String(user?.id);
+
+  const isAdmin = user?.role === "admin";
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="rounded-[2rem] border border-slate-800 bg-slate-900/85 p-8 shadow-2xl shadow-black/20">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold text-white">Projects</h1>
-            <p className="mt-2 text-slate-400">Add, track, and manage your project portfolio.</p>
-          </div>
-          {user?.role === "admin" ? (
-            <a
-              href="/admin"
-              className="rounded-2xl bg-cyan-500 px-5 py-3 text-white transition hover:bg-cyan-400"
+    <PageShell
+      title="Projects"
+      actions={isAdmin && <button className="btn-sm btn-accent" onClick={openCreate}>+ New Project</button>}
+    >
+      {loading ? (
+        <LoadingState label="Loading projects" />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+          {projects.length === 0 && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <EmptyState icon="📭" text="No projects yet. Create your first project!" />
+            </div>
+          )}
+
+          {projects.map((p) => {
+            const pTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
+            const done = pTasks.filter((t) => t.status === "Done").length;
+            return (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                taskCount={pTasks.length}
+                done={done}
+                onClick={() => navigate(`/projects/${p.id}`)}
+                onEdit={canModify(p) ? () => openEdit(p) : undefined}
+                onDelete={canModify(p) ? (e) => deleteProject(p, e) : undefined}
+              />
+            );
+          })}
+
+          {/* "New Project" ghost card */}
+          {isAdmin && (
+            <div
+              className="project-card"
+              onClick={openCreate}
+              style={{ borderStyle: "dashed", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 200, opacity: 0.5, transition: "opacity 0.2s" }}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = "0.5")}
             >
-              Open Admin Center
-            </a>
-          ) : (
-            <div className="rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-300">
-              Project creation is managed by admins.
+              <div style={{ fontSize: 28, marginBottom: 8 }}>+</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>New Project</div>
             </div>
           )}
         </div>
+      )}
 
-        {user?.role === "admin" && (
-          <div className="mt-6 grid gap-4">
-            <input
-              placeholder="Project Title"
-              className="w-full rounded-2xl border border-slate-600 bg-slate-950/50 px-4 py-3 text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30 transition backdrop-blur-sm"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+      <Modal open={modalOpen} onClose={closeModal} title={editingProject ? "Edit Project" : "New Project"}>
+        <div style={{ padding: "0 24px 24px" }}>
+          <ProjectForm
+            initialData={editingProject}
+            teams={teams}
+            submitLabel={editingProject ? "Update Project" : "Create Project"}
+            onSubmit={saveProject}
+            onCancel={closeModal}
+            showTeamSelect={isAdmin}
+          />
+        </div>
+      </Modal>
 
-            <input
-              placeholder="Description"
-              className="w-full rounded-2xl border border-slate-600 bg-slate-950/50 px-4 py-3 text-white placeholder:text-slate-500 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/30 transition backdrop-blur-sm"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-
-            <button
-              onClick={addProject}
-              className="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 px-5 py-3 text-white font-semibold transition hover:shadow-lg hover:shadow-cyan-500/30"
-            >
-              Create Project in Admin Center
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-5">
-        {projects.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-slate-600 bg-slate-950/30 p-12 text-center">
-            <p className="text-4xl mb-3">📭</p>
-            <p className="text-slate-400">No projects yet. Create your first project above!</p>
-          </div>
-        )}
-
-        {projects.map((p) => (
-          <div key={p.id} className="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-slate-900/60 to-slate-800/60 p-7 shadow-lg shadow-cyan-500/10 transition hover:-translate-y-2 hover:border-cyan-500/40 hover:shadow-cyan-500/20 duration-300 backdrop-blur-sm">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold text-cyan-300 flex items-center gap-2">
-                  <span>📁</span> {p.title}
-                </h3>
-                <p className="mt-3 text-slate-300 leading-relaxed">{p.description}</p>
-                <div className="mt-4 inline-flex items-center gap-2 rounded-lg bg-slate-900/50 px-3 py-1 text-xs text-slate-400">
-                  <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></span>
-                  <span>Active</span>
-                </div>
-              </div>
-              <span className="text-3xl opacity-20">→</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+      {toast && (
+        <div className="toast-stack">
+          <Toast type={toast.type} title={toast.title} message={toast.message} onClose={() => setToast(null)} />
+        </div>
+      )}
+    </PageShell>
   );
 }
 
