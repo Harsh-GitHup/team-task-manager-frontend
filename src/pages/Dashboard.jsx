@@ -100,56 +100,67 @@ function Dashboard() {
   return (
     <PageShell
       title="Dashboard"
-      actions={<span style={{ fontSize: 12, color: "var(--text2)" }}>👋 Welcome back, {user?.name?.split(" ")[0]}</span>}
+      actions={
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text2)" }}>👋 Welcome back, {user?.name || "User"}</span>
+        </div>
+      }
     >
       {/* ── Stat row ── */}
       <div className="stats-grid">
-        <StatCard label="Total Tasks"  value={tasks.length} sub={`across ${projects.length} projects`} variant="purple" />
-        <StatCard label="Completed"    value={done}         sub={`${tasks.length ? Math.round((done / tasks.length) * 100) : 0}% done rate`} variant="green" />
-        <StatCard label="In Progress"  value={inprog}       sub={`${users.length} team members`}         variant="amber" />
-        <StatCard label="Overdue"      value={overdue}      sub={overdue === 0 ? "All on track ✓" : "Need attention"} variant="red" />
+        <StatCard label="TOTAL TASKS"  value={tasks.length} sub={`across ${projects.length} projects`} variant="purple" />
+        <StatCard label="COMPLETED"    value={done}         sub={`${tasks.length ? Math.round((done / tasks.length) * 100) : 0}% done rate`} variant="green" />
+        <StatCard label="IN PROGRESS"  value={inprog}       sub={`${users.length} team members`}         variant="amber" />
+        <StatCard label="OVERDUE"      value={overdue}      sub={overdue === 0 ? "All on track ✓" : "Need attention"} variant="red" />
       </div>
 
       {/* ── Two-column layout ── */}
-      <div className="dash-grid">
+      <div className="dash-grid" style={{ gridTemplateColumns: "2.2fr 1fr" }}>
 
         {/* Left column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Active tasks */}
-          <div className="panel">
-            <div className="section-title">Active Tasks</div>
+          <div className="panel" style={{ padding: 24 }}>
+            <div className="section-title" style={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>ACTIVE TASKS</div>
             {activeTasks.length === 0 ? (
               <EmptyState icon="🎉" text="All caught up!" compact />
             ) : (
-              activeTasks.map((t) => (
-                <TaskRow key={t.id} task={t} members={users} projects={projects} currentUser={user} onEdit={openEdit} onRefresh={fetchTasks} />
-              ))
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {activeTasks.map((t) => (
+                  <TaskRow key={t.id} task={t} members={users} projects={projects} currentUser={user} onEdit={openEdit} onRefresh={fetchTasks} />
+                ))}
+              </div>
             )}
           </div>
 
           {/* Projects overview */}
-          <div className="panel">
-            <div className="section-title">Projects Overview</div>
+          <div className="panel" style={{ padding: 24 }}>
+            <div className="section-title" style={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>PROJECTS OVERVIEW</div>
             {projects.length === 0 ? (
               <EmptyState icon="📂" text="No projects yet." compact />
             ) : (
-              projects.map((p) => {
-                const pTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
-                const pDone  = pTasks.filter((t) => t.status === "Done").length;
-                const pct    = pTasks.length ? Math.round((pDone / pTasks.length) * 100) : 0;
-                return (
-                  <div key={p.id} style={{ marginBottom: 14 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>{p.emoji || "📁"} {p.title}</span>
-                      <span style={{ fontSize: 12, color: "var(--text2)", fontFamily: "'JetBrains Mono', monospace" }}>{pDone}/{pTasks.length}</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {projects.map((p) => {
+                  const pTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
+                  const pDone  = pTasks.filter((t) => t.status === "Done").length;
+                  const pct    = pTasks.length ? Math.round((pDone / pTasks.length) * 100) : 0;
+                  return (
+                    <div key={p.id}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontSize: 18 }}>{p.emoji || "📁"}</span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{p.title}</span>
+                        </div>
+                        <span style={{ fontSize: 12, color: "var(--text3)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{pDone}/{pTasks.length}</span>
+                      </div>
+                      <div className="progress-bar" style={{ height: 6, background: "rgba(255,255,255,0.05)" }}>
+                        <div className="progress-fill" style={{ width: `${pct}%`, background: p.color || "var(--accent)", height: "100%", borderRadius: 3 }} />
+                      </div>
                     </div>
-                    <div className="progress-bar">
-                      <div className="progress-fill" style={{ width: `${pct}%`, background: p.color || "var(--accent)" }} />
-                    </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
@@ -158,58 +169,72 @@ function Dashboard() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Activity feed */}
-          <div className="panel">
-            <div className="section-title">Activity Feed</div>
+          <div className="panel" style={{ padding: 24 }}>
+            <div className="section-title" style={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>ACTIVITY FEED</div>
             {activities.length === 0 ? (
               <div style={{ fontSize: 13, color: "var(--text2)", textAlign: "center", padding: 10 }}>No recent activity</div>
             ) : (
-              activities.slice(0, 5).map((a) => (
-                <div key={a.id} className="activity-item">
-                  <div className="activity-avatar" style={{ background: "rgba(124,106,255,0.1)", color: "var(--accent)" }}>
-                    {(a.user_name || "?").slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="activity-text" dangerouslySetInnerHTML={{ __html: `<strong>${a.user_name}</strong> ${a.action}` }} />
-                    <div className="activity-time">
-                      {new Date(a.created_at).toLocaleDateString()}{" "}
-                      {new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {activities.slice(0, 5).map((a) => (
+                  <div key={a.id} className="activity-item" style={{ gap: 14 }}>
+                    <div className="activity-avatar" style={{ 
+                      width: 32, height: 32, fontSize: 11,
+                      background: "rgba(124,106,255,0.15)", color: "var(--accent2)" 
+                    }}>
+                      {(a.user_name || "?").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div className="activity-text" style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: a.action.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text)">$1</strong>') }} />
+                      <div className="activity-time" style={{ marginTop: 4, fontSize: 11, opacity: 0.6 }}>
+                        {new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
 
           {/* Team overview */}
-          <div className="panel">
-            <div className="section-title">Team</div>
-            {users.slice(0, 4).map((m) => {
-              const mTasks = tasks.filter((t) => String(t.assigned_to) === String(m.id) && t.status !== "Done").length;
-              return (
-                <MemberCard
-                  key={m.id}
-                  member={m}
-                  canEdit={false}
-                  extra={
-                    <div style={{ fontSize: 11, color: "var(--text2)", marginLeft: "auto", marginRight: 10 }}>
-                      {mTasks} active task{mTasks !== 1 ? "s" : ""}
+          <div className="panel" style={{ padding: 24 }}>
+            <div className="section-title" style={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>TEAM</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {users.slice(0, 5).map((m) => {
+                const mTasks = tasks.filter((t) => String(t.assigned_to) === String(m.id) && t.status !== "Done").length;
+                return (
+                  <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0" }}>
+                    <div className="activity-avatar" style={{ width: 34, height: 34, fontSize: 12, background: "rgba(124,106,255,0.1)", color: "var(--accent)" }}>
+                      {m.name.slice(0, 2).toUpperCase()}
                     </div>
-                  }
-                />
-              );
-            })}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{m.name}</div>
+                      <div style={{ fontSize: 11, color: "var(--text3)" }}>{mTasks} active task{mTasks !== 1 ? "s" : ""}</div>
+                    </div>
+                    <div style={{ 
+                      fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 4,
+                      background: m.role === 'admin' ? "rgba(124,106,255,0.15)" : "rgba(255,255,255,0.05)",
+                      color: m.role === 'admin' ? "var(--accent2)" : "var(--text3)",
+                      letterSpacing: "0.5px"
+                    }}>
+                      {m.role.toUpperCase()}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
 
             {user?.role === "admin" && (
               <Link
                 to="/admin"
                 style={{
-                  display: "block", marginTop: 16, padding: "10px 14px",
-                  borderRadius: 8, background: "var(--bg3)", border: "1px solid var(--border)",
-                  color: "var(--text)", fontSize: 13, fontWeight: 600,
+                  display: "block", marginTop: 24, padding: "12px",
+                  borderRadius: 12, background: "rgba(124,106,255,0.08)", border: "1px solid rgba(124,106,255,0.2)",
+                  color: "var(--accent2)", fontSize: 13, fontWeight: 700,
                   textDecoration: "none", textAlign: "center",
+                  transition: "all 0.2s"
                 }}
               >
-                Open Admin Center →
+                Open Admin Center
               </Link>
             )}
           </div>
