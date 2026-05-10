@@ -45,6 +45,7 @@ function TeamMembers() {
   const [tasks, setTasks] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [toast, setToast] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
   const [editingRole, setEditingRole] = useState("member");
@@ -52,9 +53,19 @@ function TeamMembers() {
   const showToast = (type, title, message) => setToast({ type, title, message });
 
   const loadMembers = async (teamId) => {
-    if (!teamId) { setMembers([]); return; }
-    const res = await API.get(`/teams/${teamId}/members`);
-    setMembers(res.data || []);
+    if (!teamId) { setMembers([]); setAccessDenied(false); return; }
+    try {
+      const res = await API.get(`/teams/${teamId}/members`);
+      setMembers(res.data || []);
+      setAccessDenied(false);
+    } catch (err) {
+      if (err.response?.status === 403) {
+        setAccessDenied(true);
+        setMembers([]);
+      } else {
+        showToast("error", "Could not load members", err.response?.data?.error || "Please try again.");
+      }
+    }
   };
 
   // Initial data load
@@ -71,7 +82,7 @@ function TeamMembers() {
         setSelectedTeamId(firstId);
         if (firstId) await loadMembers(firstId);
       } catch (err) {
-        if (!cancelled) showToast("error", "Could not load members", err.response?.data?.error || "Please try again.");
+        if (!cancelled) showToast("error", "Could not load initial data", err.response?.data?.error || "Please try again.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -83,11 +94,7 @@ function TeamMembers() {
   // Reload when team changes
   useEffect(() => {
     if (!selectedTeamId) return;
-    let cancelled = false;
-    API.get(`/teams/${selectedTeamId}/members`)
-      .then((res) => { if (!cancelled) setMembers(res.data || []); })
-      .catch((err) => showToast("error", "Could not load members", err.response?.data?.error));
-    return () => { cancelled = true; };
+    loadMembers(selectedTeamId);
   }, [selectedTeamId]);
 
   // Enrich members with task stats
@@ -135,6 +142,7 @@ function TeamMembers() {
       value={selectedTeamId}
       onChange={(e) => setSelectedTeamId(e.target.value)}
     >
+      <option value="">Select Team</option>
       {teams.map((t) => (
         <option key={t.id} value={t.id}>{t.name}</option>
       ))}
@@ -145,8 +153,10 @@ function TeamMembers() {
     <PageShell title="Team Members" actions={teamSelect}>
       {loading ? (
         <LoadingState label="Loading team members" />
-      ) : user?.role !== "admin" ? (
+      ) : accessDenied ? (
         <EmptyState icon="🔒" text="Admin access required." />
+      ) : teams.length === 0 ? (
+        <EmptyState icon="🧩" text="No teams available." />
       ) : memberStats.length === 0 ? (
         <EmptyState icon="👥" text="No team members found." />
       ) : (
