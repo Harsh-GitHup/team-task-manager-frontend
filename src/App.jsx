@@ -12,6 +12,7 @@ import TeamMembers from "./pages/TeamMembers";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Admin from "./pages/Admin";
+import InviteJoin from "./pages/InviteJoin";
 
 function App() {
   const { user } = useContext(AuthContext);
@@ -22,7 +23,6 @@ function App() {
     <>
       {isAuthenticated ? (
         <div className={`app-shell ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-          {/* Sidebar and Backdrop are top-level siblings to handle z-index correctly */}
           <Sidebar />
           
           {isSidebarOpen && (
@@ -48,6 +48,7 @@ function App() {
                 <Route path="/tasks" element={<Tasks />} />
                 <Route path="/team-members" element={<TeamMembers />} />
                 <Route path="/chat" element={<Chat />} />
+                <Route path="/invite/:token" element={<InviteJoin />} />
                 <Route
                   path="/admin"
                   element={
@@ -64,6 +65,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/invite/:token" element={<InviteJoin />} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       )}

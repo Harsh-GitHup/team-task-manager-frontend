@@ -47,7 +47,7 @@ function Sidebar() {
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">⚡</div>
           <div>
-            <div className="sidebar-logo-text">TaskFlow</div>
+            <div className="sidebar-logo-text">TaskHub</div>
             <div style={{ fontSize: 11, color: "var(--text3)" }}>Operate your workspace</div>
           </div>
         </div>

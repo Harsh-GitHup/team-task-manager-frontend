@@ -107,7 +107,7 @@ function Admin() {
   // ── Action handlers ──
   const createInvite = async () => {
     try {
-      const res = await API.post("/invites", {});
+      const res = await API.post("/invites", { team_id: selectedTeamId });
       await navigator.clipboard.writeText(res.data.link);
       showToast("success", "Invite created", "Invite link copied to clipboard.");
     } catch (err) { showToast("error", "Could not create invite", err.response?.data?.error || "Please try again."); }
