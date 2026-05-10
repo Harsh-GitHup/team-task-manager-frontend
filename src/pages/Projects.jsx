@@ -12,48 +12,45 @@ import ProjectForm from "../components/ProjectForm";
 // ─────────────────────────────────────────────────────────
 //  Single project card
 // ─────────────────────────────────────────────────────────
-function ProjectCard({ project, taskCount, done, onEdit, onDelete, onClick }) {
+function ProjectCard({ project, taskCount, done, memberCount, onEdit, onDelete, onClick }) {
   const pct = taskCount ? Math.round((done / taskCount) * 100) : 0;
   const color = project.color || "var(--accent)";
 
   return (
-    <div className="project-card" onClick={onClick} style={{ position: "relative" }}>
-      {/* Edit / delete actions */}
-      {(onEdit || onDelete) && (
-        <div
-          style={{ position: "absolute", top: 14, right: 14, display: "flex", gap: 6 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {onEdit && <button className="icon-btn edit" onClick={onEdit}>✎</button>}
-          {onDelete && <button className="icon-btn del" onClick={onDelete}>Del</button>}
-        </div>
-      )}
-
-      {/* Top colour accent */}
-      <div style={{ height: 3, background: `linear-gradient(90deg, ${color}, rgba(255,255,255,0.18))`, borderRadius: 3, marginBottom: 16, opacity: 0.8 }} />
-
+    <div 
+      className="project-card" 
+      onClick={onClick} 
+      style={{ "--project-color": color }}
+    >
       <div className="project-card-top">
-        <span className="project-emoji">{project.emoji || "📁"}</span>
+        <span className="project-emoji">{project.emoji || "🎨"}</span>
         <span className="project-name">{project.title}</span>
       </div>
 
-      <p className="project-desc">{project.description || "No description"}</p>
+      <p className="project-desc">{project.description || "No description provided for this project."}</p>
 
-      {/* Progress */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text2)", marginBottom: 5 }}>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text2)", marginBottom: 8, fontWeight: 500 }}>
           <span>Progress</span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{pct}%</span>
         </div>
-        <div className="progress-bar">
-          <div className="progress-fill" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}, rgba(255,255,255,0.2))` }} />
+        <div className="progress-bar" style={{ height: 8 }}>
+          <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
         </div>
       </div>
 
       <div className="project-stats">
-        <span><strong>{taskCount}</strong> tasks</span>
-        <span><strong>{done}</strong> done</span>
+        <div className="stat-item"><strong>{taskCount}</strong> tasks</div>
+        <div className="stat-item"><strong>{done}</strong> done</div>
+        <div className="stat-item"><strong>{memberCount || 0}</strong> members</div>
       </div>
+
+      {(onEdit || onDelete) && (
+        <div className="project-card-actions" onClick={(e) => e.stopPropagation()}>
+          {onEdit && <button className="icon-btn edit" onClick={onEdit} title="Edit Project">✎</button>}
+          {onDelete && <button className="icon-btn del" onClick={onDelete} title="Delete Project">🗑️</button>}
+        </div>
+      )}
     </div>
   );
 }
@@ -107,10 +104,10 @@ function Projects() {
   const saveProject = async (form) => {
     try {
       if (editingProject) {
-        await API.put(`/projects/${editingProject.id}`, { title: form.title, description: form.description, team_id: form.team_id, color: form.color });
+        await API.put(`/projects/${editingProject.id}`, { title: form.title, description: form.description, team_id: form.team_id, color: form.color, emoji: form.emoji });
         showToast("success", "Project updated", `${form.title} was saved.`);
       } else {
-        await API.post("/projects", { title: form.title, description: form.description, team_id: form.team_id, color: form.color });
+        await API.post("/projects", { title: form.title, description: form.description, team_id: form.team_id, color: form.color, emoji: form.emoji });
         showToast("success", "Project created", `${form.title} was created.`);
       }
       closeModal();
@@ -156,12 +153,14 @@ function Projects() {
           {projects.map((p) => {
             const pTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
             const done = pTasks.filter((t) => t.status === "Done").length;
+            const team = teams.find(t => String(t.id) === String(p.team_id));
             return (
               <ProjectCard
                 key={p.id}
                 project={p}
                 taskCount={pTasks.length}
                 done={done}
+                memberCount={team?.member_count || 0}
                 onClick={() => navigate(`/projects/${p.id}`)}
                 onEdit={canModify(p) ? () => openEdit(p) : undefined}
                 onDelete={canModify(p) ? (e) => deleteProject(p, e) : undefined}
@@ -174,12 +173,22 @@ function Projects() {
             <div
               className="project-card"
               onClick={openCreate}
-              style={{ borderStyle: "dashed", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 200, opacity: 0.5, transition: "opacity 0.2s" }}
+              style={{ 
+                borderStyle: "dashed", 
+                display: "flex", 
+                flexDirection: "column", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                minHeight: 250, 
+                opacity: 0.5, 
+                transition: "all 0.2s",
+                "--project-color": "transparent"
+              }}
               onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
               onMouseOut={(e) => (e.currentTarget.style.opacity = "0.5")}
             >
-              <div style={{ fontSize: 28, marginBottom: 8 }}>+</div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>New Project</div>
+              <div style={{ fontSize: 32, marginBottom: 12, color: "var(--text3)" }}>+</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text2)" }}>New Project</div>
             </div>
           )}
         </div>

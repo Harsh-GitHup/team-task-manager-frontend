@@ -651,48 +651,99 @@ html {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
+  padding: 24px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .project-card:hover {
   border-color: var(--border2);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(124, 106, 255, 0.1);
+}
+
+.project-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--project-color, var(--accent));
+  opacity: 0.8;
 }
 
 .project-card-top {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 16px;
 }
 
 .project-emoji {
-  font-size: 22px;
+  font-size: 26px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 .project-name {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.5px;
+  color: #fff;
 }
 
 .project-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text2);
-  line-height: 1.5;
-  margin-bottom: 14px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .project-stats {
   display: flex;
-  gap: 14px;
-  font-size: 12px;
+  align-items: center;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.03);
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
   color: var(--text3);
+}
+
+.stat-item strong {
+  color: var(--text2);
+  font-weight: 600;
+}
+
+.project-card-actions {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s;
+}
+
+.project-card:hover .project-card-actions {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────

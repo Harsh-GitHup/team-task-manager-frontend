@@ -31,6 +31,7 @@ function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel 
             description: form.description.trim(),
             team_id: form.team_id,
             color: form.color,
+            emoji: form.emoji,
         });
     };
 

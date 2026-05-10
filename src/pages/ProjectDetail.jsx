@@ -139,7 +139,7 @@ function ProjectDetail() {
 
   const saveProject = async (form) => {
     try {
-      await API.put(`/projects/${id}`, { title: form.title, description: form.description, team_id: form.team_id });
+      await API.put(`/projects/${id}`, { title: form.title, description: form.description, team_id: form.team_id, color: form.color, emoji: form.emoji });
       showToast("success", "Project updated", `${form.title} was saved.`);
       closeProjectModal();
       await refreshData();
