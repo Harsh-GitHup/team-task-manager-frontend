@@ -2,11 +2,11 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
-import { NotificationContext } from "../context/NotificationContext";
+import { useNotifications } from "../context/NotificationContext";
 
 function Sidebar() {
   const { user, logout } = useContext(AuthContext);
-  const { unreadCount } = useContext(NotificationContext);
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);

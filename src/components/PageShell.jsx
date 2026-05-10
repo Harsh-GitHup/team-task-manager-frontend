@@ -1,5 +1,5 @@
 import { useContext, useState, useRef, useEffect } from "react";
-import { NotificationContext } from "../context/NotificationContext";
+import { useNotifications } from "../context/NotificationContext";
 import { Link } from "react-router-dom";
 
 /**
@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
  *  noPad    {boolean}    Skip content padding (useful when embedding full-bleed sections)
  */
 export default function PageShell({ title, actions, children, noPad = false }) {
-  const { unreadCount, recentMessages } = useContext(NotificationContext);
+  const { unreadCount, recentMessages } = useNotifications();
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
 

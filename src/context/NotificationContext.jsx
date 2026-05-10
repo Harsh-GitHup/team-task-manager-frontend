@@ -2,12 +2,14 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 
-export const NotificationContext = createContext();
+const NotificationContext = createContext();
+
+export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [chatNotifications, setChatNotifications] = useState({});
+  const [chatNotifications, setChatNotifications] = useState({}); // { teamId: count }
   const [recentMessages, setRecentMessages] = useState([]);
 
   useEffect(() => {
@@ -16,7 +18,7 @@ export const NotificationProvider = ({ children }) => {
     const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
     
     socket.on("new_message", (message) => {
-      const currentPath = globalThis.location.pathname;
+      const currentPath = window.location.pathname;
       const isChatPage = currentPath.startsWith('/chat');
       
       if (!isChatPage || !currentPath.includes(message.team_id)) {
@@ -43,8 +45,15 @@ export const NotificationProvider = ({ children }) => {
     setRecentMessages(prev => prev.filter(m => String(m.team_id) !== String(teamId)));
   };
 
+  const value = {
+    unreadCount,
+    chatNotifications,
+    recentMessages,
+    clearUnread
+  };
+
   return (
-    <NotificationContext.Provider value={{ unreadCount, chatNotifications, recentMessages, clearUnread }}>
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

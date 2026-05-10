@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useContext, useRef } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
-import { NotificationContext } from "../context/NotificationContext";
+import { useNotifications } from "../context/NotificationContext";
 import PageShell from "../components/PageShell";
 import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
@@ -9,7 +9,7 @@ import { io } from "socket.io-client";
 
 function Chat() {
   const { user } = useContext(AuthContext);
-  const { chatNotifications, clearUnread } = useContext(NotificationContext);
+  const { chatNotifications, clearUnread } = useNotifications();
   
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
