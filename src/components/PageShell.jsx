@@ -1,5 +1,6 @@
 import { useContext, useState, useRef, useEffect } from "react";
 import { useNotifications } from "../context/NotificationContext";
+import { useUI } from "../context/UIContext";
 import { Link } from "react-router-dom";
 
 /**
@@ -14,6 +15,7 @@ import { Link } from "react-router-dom";
  */
 export default function PageShell({ title, actions, children, noPad = false }) {
   const { unreadCount, recentMessages } = useNotifications();
+  const { toggleSidebar } = useUI();
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
 
@@ -31,6 +33,9 @@ export default function PageShell({ title, actions, children, noPad = false }) {
   return (
     <div className="main animate-fade-in">
       <div className="topbar">
+        <button className="mobile-toggle" onClick={toggleSidebar} aria-label="Toggle Menu">
+          ☰
+        </button>
         <div className="topbar-title">{title}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           

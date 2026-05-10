@@ -3,10 +3,12 @@ import { useContext, useEffect, useState } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
+import { useUI } from "../context/UIContext";
 
 function Sidebar() {
   const { user, logout } = useContext(AuthContext);
   const { unreadCount } = useNotifications();
+  const { isSidebarOpen } = useUI();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
@@ -40,7 +42,7 @@ function Sidebar() {
   }, []);
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">⚡</div>

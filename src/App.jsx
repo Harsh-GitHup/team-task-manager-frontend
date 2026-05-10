@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext";
+import { useUI } from "./context/UIContext";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
@@ -14,12 +15,20 @@ import Admin from "./pages/Admin";
 
 function App() {
   const { user } = useContext(AuthContext);
+  const { isSidebarOpen, closeSidebar } = useUI();
   const isAuthenticated = Boolean(user);
 
   return (
-    <BrowserRouter>
+    <>
       {isAuthenticated ? (
-        <div className="app-shell">
+        <div className={`app-shell ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+          {/* Sidebar and Backdrop are top-level siblings to handle z-index correctly */}
+          <Sidebar />
+          
+          {isSidebarOpen && (
+            <div className="sidebar-backdrop" onClick={closeSidebar} />
+          )}
+          
           <div
             style={{
               pointerEvents: "none",
@@ -31,7 +40,6 @@ function App() {
             }}
           />
           <div className="app-shell-inner">
-            <Sidebar />
             <div className="app-shell-main">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
@@ -59,7 +67,7 @@ function App() {
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       )}
-    </BrowserRouter>
+    </>
   );
 }
 
