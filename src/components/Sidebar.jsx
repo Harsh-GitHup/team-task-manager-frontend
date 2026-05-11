@@ -9,11 +9,12 @@ function Sidebar() {
   const { user, logout } = useContext(AuthContext);
   const { chatNotifications } = useNotifications();
   const { isSidebarOpen } = useUI();
-  
+
   // Total chat messages across all teams
   const totalChatNotifs = Object.values(chatNotifications).reduce((a, b) => a + b, 0);
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [showAllProjects, setShowAllProjects] = useState(false);
 
   const navItems = [
     { to: "/", icon: "🏠", label: "Dashboard" },
@@ -103,7 +104,7 @@ function Sidebar() {
               <div style={{ padding: "8px 10px", color: "var(--text3)", fontSize: 13 }}>No projects yet</div>
             ) : (
               <div>
-                {projects.map((project) => (
+                {projects.slice(0, showAllProjects ? projects.length : 4).map((project) => (
                   <NavLink
                     key={project.id}
                     to={`/projects/${project.id}`}
@@ -113,6 +114,17 @@ function Sidebar() {
                     <span className="truncate">{project.title}</span>
                   </NavLink>
                 ))}
+                {projects.length > 4 && (
+                  <button
+                    type="button"
+                    className="project-item"
+                    onClick={() => setShowAllProjects((prev) => !prev)}
+                    style={{ width: "100%", textAlign: "left", background: "transparent", border: "none" }}
+                  >
+                    <span className="project-dot" style={{ background: "var(--text3)" }} />
+                    <span>{showAllProjects ? "See less" : `See more (${projects.length - 4})`}</span>
+                  </button>
+                )}
               </div>
             );
           })()}

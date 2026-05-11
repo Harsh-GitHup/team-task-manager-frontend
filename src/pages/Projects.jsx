@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext, useCallback } from "react";
-import { useNavigate, NavLink } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
@@ -25,12 +25,12 @@ function ProjectCard({ project, taskCount, done, memberCount, onEdit, onDelete, 
   };
 
   return (
-    <NavLink
+    <button
       className="project-card"
       onClick={onClick}
       onKeyDown={handleCardKeyDown}
       style={{ "--project-color": color }}
-      role="button"
+      type="button"
       tabIndex={0}
     >
       <div className="project-card-top">
@@ -62,7 +62,7 @@ function ProjectCard({ project, taskCount, done, memberCount, onEdit, onDelete, 
           {onDelete && <button className="icon-btn del" onClick={(e) => { e.stopPropagation(); onDelete(e); }} title="Delete Project">🗑️</button>}
         </div>
       )}
-    </NavLink>
+    </button>
   );
 }
 
