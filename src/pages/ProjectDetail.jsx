@@ -11,9 +11,9 @@ import TaskForm from "../components/TaskForm";
 
 // Kanban column definitions
 const STATUS_COLS = [
-  { key: "Todo",        label: "To Do",       color: "#5a5a7a" },
+  { key: "Todo", label: "To Do", color: "#5a5a7a" },
   { key: "In Progress", label: "In Progress", color: "#7c6aff" },
-  { key: "Done",        label: "Done",        color: "#2dd4a0" },
+  { key: "Done", label: "Done", color: "#2dd4a0" },
 ];
 
 // ─────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ function TaskListItem({ task, canModify, onEdit, onDelete }) {
       {canModify && (
         <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
           <button className="icon-btn edit" onClick={() => onEdit(task)}>✎</button>
-          <button className="icon-btn del" onClick={() => onDelete(task)}>Del</button>
+          <button className="icon-btn del" onClick={() => onDelete(task)}>🗑️</button>
         </div>
       )}
     </div>
@@ -58,20 +58,26 @@ function TaskListItem({ task, canModify, onEdit, onDelete }) {
 // ─────────────────────────────────────────────────────────
 //  Local: kanban card
 // ─────────────────────────────────────────────────────────
-function KanbanCard({ task, canModify, onEdit, onDelete }) {
+function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
   return (
-    <div className="kanban-card" onClick={() => canModify && onEdit(task)} style={{ cursor: canModify ? "pointer" : "default", position: "relative" }}>
+    <div
+      className="kanban-card"
+      onClick={() => canModify && onEdit(task)}
+      draggable={canModify}
+      onDragStart={(e) => onDragStart(e, task)}
+      style={{ cursor: canModify ? "grab" : "default", position: "relative" }}
+    >
       {canModify && (
         <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
           <button className="icon-btn edit" onClick={() => onEdit(task)}>✎</button>
-          <button className="icon-btn del" onClick={() => onDelete(task)}>Del</button>
+          <button className="icon-btn del" onClick={() => onDelete(task)}>🗑️</button>
         </div>
       )}
       <div className="kanban-card-title">{task.title}</div>
       <div className="kanban-card-footer">
-        <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, textTransform: "uppercase", background: "rgba(255,255,255,0.05)", color: "var(--text3)" }}>
-          {task.status}
-        </span>
+        {task.priority && (
+          <span className={`tag tag-${task.priority.toLowerCase()}`} style={{ fontSize: 9 }}>{task.priority.toUpperCase()}</span>
+        )}
       </div>
     </div>
   );
@@ -85,26 +91,31 @@ function ProjectDetail() {
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
-  const [project, setProject]   = useState(null);
-  const [tasks, setTasks]       = useState([]);
+  const [project, setProject] = useState(null);
+  const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [teams, setTeams]       = useState([]);
-  const [users, setUsers]       = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [users, setUsers] = useState([]);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
-  const [taskModalOpen, setTaskModalOpen]       = useState(false);
-  const [editingTask, setEditingTask]           = useState(null);
-  const [toast, setToast]   = useState(null);
-  const [tab, setTab]       = useState("list");
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [tab, setTab] = useState("kanban"); // Default to board for drag & drop visibility
 
   const showToast = (type, title, message) => setToast({ type, title, message });
 
   const refreshData = async () => {
-    const [pRes, tRes] = await Promise.all([API.get("/projects"), API.get("/tasks")]);
-    const allProjects = pRes.data || [];
-    const allTasks    = tRes.data || [];
-    setProjects(allProjects);
-    setProject(allProjects.find((p) => String(p.id) === String(id)));
-    setTasks(allTasks.filter((t) => String(t.project_id) === String(id) || String(t.projectId) === String(id)));
+    try {
+      const [pRes, tRes] = await Promise.all([API.get("/projects"), API.get("/tasks")]);
+      const allProjects = pRes.data.projects || pRes.data || [];
+      const allTasks = tRes.data.tasks || tRes.data || [];
+      setProjects(allProjects);
+      const currentProj = allProjects.find((p) => String(p.id) === String(id));
+      setProject(currentProj);
+      setTasks(allTasks.filter((t) => String(t.project_id) === String(id) || String(t.projectId) === String(id)));
+    } catch (err) {
+      console.error("Refresh failed", err);
+    }
   };
 
   useEffect(() => {
@@ -114,8 +125,8 @@ function ProjectDetail() {
           API.get("/projects"), API.get("/tasks"),
           API.get("/teams"), API.get("/auth/users"),
         ]);
-        const allProjects = pRes.data || [];
-        const allTasks    = tRes.data || [];
+        const allProjects = pRes.data.projects || pRes.data || [];
+        const allTasks = tRes.data.tasks || tRes.data || [];
         setProjects(allProjects);
         setTeams(tmRes.data || []);
         setUsers(uRes.data || []);
@@ -133,7 +144,8 @@ function ProjectDetail() {
   const canModifyTask = (t) => user?.role === "admin" || String(t.assigned_to) === String(user?.id) || String(t.created_by) === String(user?.id);
 
   // Modal helpers
-  const openTaskEdit  = (task) => { setEditingTask(task); setTaskModalOpen(true); };
+  const openTaskCreate = () => { setEditingTask(null); setTaskModalOpen(true); };
+  const openTaskEdit = (task) => { setEditingTask(task); setTaskModalOpen(true); };
   const closeTaskModal = () => { setTaskModalOpen(false); setEditingTask(null); };
   const closeProjectModal = () => setProjectModalOpen(false);
 
@@ -150,20 +162,33 @@ function ProjectDetail() {
 
   const saveTask = async (form) => {
     try {
-      const payload = user?.role === "admin"
-        ? { title: form.title, description: form.description, status: form.status, project_id: form.project_id, assigned_to: form.assigned_to || null, team_id: project?.team_id || null }
-        : { title: form.title, description: form.description, status: form.status };
-      await API.put(`/tasks/${editingTask.id}`, payload);
-      showToast("success", "Task updated", `${form.title} was saved.`);
+      const payload = {
+        title: form.title,
+        description: form.description,
+        status: form.status,
+        priority: form.priority,
+        due_date: form.due_date || null,
+        project_id: id, // Always current project
+        team_id: project?.team_id || null,
+        assigned_to: form.assigned_to || null
+      };
+
+      if (editingTask) {
+        await API.put(`/tasks/${editingTask.id}`, payload);
+        showToast("success", "Task updated", `${form.title} was saved.`);
+      } else {
+        await API.post("/tasks", payload);
+        showToast("success", "Task created", `${form.title} was created.`);
+      }
       closeTaskModal();
       await refreshData();
     } catch (err) {
-      showToast("error", "Update failed", err.response?.data?.error || "Please try again.");
+      showToast("error", editingTask ? "Update failed" : "Creation failed", err.response?.data?.error || "Please try again.");
     }
   };
 
   const deleteTask = async (task) => {
-    if (!window.confirm(`Delete "${task.title}"?`)) return;
+    if (!globalThis.confirm(`Delete "${task.title}"?`)) return;
     try {
       await API.delete(`/tasks/${task.id}`);
       showToast("success", "Task deleted", `${task.title} was removed.`);
@@ -174,12 +199,38 @@ function ProjectDetail() {
   };
 
   const deleteProject = async () => {
-    if (!window.confirm("Delete this project and all its tasks?")) return;
+    if (!globalThis.confirm("Delete this project and all its tasks?")) return;
     try {
       await API.delete(`/projects/${id}`);
       navigate("/projects");
     } catch (err) {
       showToast("error", "Delete failed", err.response?.data?.error || "Please try again.");
+    }
+  };
+
+  // ── Drag & Drop ──
+  const onDragStart = (e, task) => {
+    e.dataTransfer.setData("taskId", task.id);
+  };
+
+  const onDragOver = (e) => {
+    e.preventDefault(); // Required to allow drop
+  };
+
+  const onDrop = async (e, status) => {
+    const taskId = e.dataTransfer.getData("taskId");
+    const task = tasks.find(t => String(t.id) === String(taskId));
+    if (!task || task.status === status) return;
+
+    try {
+      // Optimistic UI update
+      setTasks(prev => prev.map(t => String(t.id) === String(taskId) ? { ...t, status } : t));
+
+      await API.put(`/tasks/${taskId}`, { status });
+      showToast("success", "Status updated", `Moved to ${status}`);
+    } catch (err) {
+      showToast("error", "Move failed", "Could not update status.");
+      await refreshData(); // Revert on failure
     }
   };
 
@@ -193,7 +244,7 @@ function ProjectDetail() {
   }
 
   const done = tasks.filter((t) => t.status === "Done").length;
-  const pct  = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+  const pct = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
 
   // Topbar breadcrumb + actions
   const topbarTitle = (
@@ -204,11 +255,15 @@ function ProjectDetail() {
     </>
   );
 
+  const isAdmin = user?.role === "admin";
+  const isHead = users.some(u => String(u.id) === String(user?.id) && u.role === 'admin') || canModifyProject;
+
   const topbarActions = (
-    <>
+    <div style={{ display: 'flex', gap: 8 }}>
+      {(isAdmin || isHead) && <button className="btn-sm btn-accent" onClick={openTaskCreate}>+ New Task</button>}
       {canModifyProject && <button className="btn-sm btn-ghost" onClick={() => setProjectModalOpen(true)}>Edit</button>}
       {canModifyProject && <button className="btn-sm btn-danger" onClick={deleteProject}>Delete</button>}
-    </>
+    </div>
   );
 
   return (
@@ -227,7 +282,7 @@ function ProjectDetail() {
 
       {/* ── View tabs ── */}
       <div className="tabs" style={{ marginBottom: 20 }}>
-        <div className={`tab ${tab === "list"   ? "active" : ""}`} onClick={() => setTab("list")}>List</div>
+        <div className={`tab ${tab === "list" ? "active" : ""}`} onClick={() => setTab("list")}>List</div>
         <div className={`tab ${tab === "kanban" ? "active" : ""}`} onClick={() => setTab("kanban")}>Board</div>
       </div>
 
@@ -250,14 +305,24 @@ function ProjectDetail() {
           {STATUS_COLS.map((col) => {
             const colTasks = tasks.filter((t) => t.status === col.key);
             return (
-              <div key={col.key} className="kanban-col">
+              <div
+                key={col.key}
+                className="kanban-col"
+                onDragOver={onDragOver}
+                onDrop={(e) => onDrop(e, col.key)}
+              >
                 <div className="kanban-header">
                   <div className="kanban-dot" style={{ background: col.color }} />
                   <div className="kanban-title" style={{ color: col.color }}>{col.label}</div>
                   <div className="kanban-count">{colTasks.length}</div>
                 </div>
+                {colTasks.length === 0 && (
+                  <div style={{ padding: 20, textAlign: 'center', opacity: 0.3, fontSize: 12, border: '2px dashed var(--border)', borderRadius: 8, margin: '10px 0' }}>
+                    Drop here
+                  </div>
+                )}
                 {colTasks.map((t) => (
-                  <KanbanCard key={t.id} task={t} canModify={canModifyTask(t)} onEdit={openTaskEdit} onDelete={deleteTask} />
+                  <KanbanCard key={t.id} task={t} canModify={canModifyTask(t)} onEdit={openTaskEdit} onDelete={deleteTask} onDragStart={onDragStart} />
                 ))}
               </div>
             );
@@ -279,16 +344,16 @@ function ProjectDetail() {
         </div>
       </Modal>
 
-      {/* ── Edit Task modal ── */}
-      <Modal open={taskModalOpen} onClose={closeTaskModal} title="Edit Task">
+      {/* ── Task modal (Create/Edit) ── */}
+      <Modal open={taskModalOpen} onClose={closeTaskModal} title={editingTask ? "Edit Task" : "New Task"}>
         <TaskForm
           initialData={editingTask}
           projects={projects}
           users={users.filter((u) => u.role !== "admin")}
-          showProjectSelect={user?.role === "admin"}
-          showAssigneeSelect={user?.role === "admin"}
+          showProjectSelect={false} // Hidden as we're in specific project
+          showAssigneeSelect={isAdmin || canModifyProject}
           showStatusSelect
-          submitLabel="Update Task"
+          submitLabel={editingTask ? "Update Task" : "Create Task"}
           onSubmit={saveTask}
           onCancel={closeTaskModal}
         />
