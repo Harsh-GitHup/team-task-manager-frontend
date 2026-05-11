@@ -1,27 +1,30 @@
-import { useState, useCallback, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import { useNotifications } from "../context/NotificationContext";
 import PageShell from "../components/PageShell";
 import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
-import { io } from "socket.io-client";
 
 function Chat() {
   const { user } = useContext(AuthContext);
-  const { chatNotifications, clearUnread } = useNotifications();
-  
+  const { chatNotifications, clearTeamUnread, socket } = useNotifications();
+
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   const scrollRef = useRef(null);
-  const socketRef = useRef(null);
 
   const showToast = (type, title, message) => setToast({ type, title, message });
+
+  const addUniqueMessage = (prevMessages, msg) => {
+    if (prevMessages.some((m) => m.id === msg.id)) return prevMessages;
+    return [msg, ...prevMessages];
+  };
 
   // Load teams
   useEffect(() => {
@@ -33,7 +36,7 @@ function Chat() {
         if (teamList.length > 0) {
           setSelectedTeam(teamList[0]);
         }
-      } catch (err) {
+      } catch {
         showToast("error", "Failed to load teams", "Could not fetch your teams.");
       } finally {
         setLoading(false);
@@ -42,19 +45,20 @@ function Chat() {
     loadTeams();
   }, []);
 
-  // Socket connection for real-time messages
+  // Listen for real-time messages via centralized socket
   useEffect(() => {
-    socketRef.current = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
-    
-    socketRef.current.on("new_message", (msg) => {
-      if (selectedTeam && String(msg.team_id) === String(selectedTeam.id)) {
-        setMessages(prev => [msg, ...prev]);
-        clearUnread(selectedTeam.id);
-      }
-    });
+    if (!socket) return;
 
-    return () => socketRef.current.disconnect();
-  }, [selectedTeam, clearUnread]);
+    const handleNewMessage = (msg) => {
+      if (selectedTeam && String(msg.team_id) === String(selectedTeam.id)) {
+        setMessages((prev) => addUniqueMessage(prev, msg));
+        clearTeamUnread(selectedTeam.id);
+      }
+    };
+
+    socket.on("new_message", handleNewMessage);
+    return () => socket.off("new_message", handleNewMessage);
+  }, [selectedTeam, socket, clearTeamUnread]);
 
   // Load messages when team changes
   useEffect(() => {
@@ -64,15 +68,19 @@ function Chat() {
       try {
         const res = await API.get(`/chat/${selectedTeam.id}`);
         setMessages(res.data || []);
-        clearUnread(selectedTeam.id);
-      } catch (err) {
+        clearTeamUnread(selectedTeam.id);
+      } catch {
         showToast("error", "Failed to load messages", "Connection error");
       }
     };
 
     fetchMessages();
-    socketRef.current?.emit("join_team", selectedTeam.id);
-  }, [selectedTeam, clearUnread]);
+
+    // Join the team room on the server
+    if (socket) {
+      socket.emit("join_team", selectedTeam.id);
+    }
+  }, [selectedTeam, socket, clearTeamUnread]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -86,8 +94,6 @@ function Chat() {
     try {
       await API.post("/chat", { team_id: selectedTeam.id, message: text.trim() });
       setText("");
-      // Local addition for speed (though socket will also handle it)
-      // fetchMessages(); // handled by socket event now
     } catch (err) {
       showToast("error", "Send failed", err.response?.data?.error || "Message could not be sent");
     }
@@ -96,19 +102,26 @@ function Chat() {
   return (
     <PageShell title="Team Chat" noPad>
       <div className="chat-container">
-        
+
         {/* Left Sidebar: Teams */}
         <div className="chat-sidebar">
           <div className="chat-sidebar-header">Teams</div>
           <div className="chat-list">
             {teams.map(t => (
-              <div 
-                key={t.id} 
+              <button
+                key={t.id}
+                type="button"
                 className={`chat-list-item ${selectedTeam?.id === t.id ? 'active' : ''}`}
                 onClick={() => setSelectedTeam(t)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedTeam(t);
+                  }
+                }}
               >
-                <div 
-                  className="member-avatar" 
+                <div
+                  className="member-avatar"
                   style={{ width: 36, height: 36, background: "rgba(124,106,255,0.15)", color: "var(--accent2)", fontSize: 14 }}
                 >
                   {t.name.slice(0, 2).toUpperCase()}
@@ -120,7 +133,7 @@ function Chat() {
                 {chatNotifications[t.id] > 0 && (
                   <span className="sidebar-badge">{chatNotifications[t.id]}</span>
                 )}
-              </div>
+              </button>
             ))}
             {teams.length === 0 && !loading && (
               <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
