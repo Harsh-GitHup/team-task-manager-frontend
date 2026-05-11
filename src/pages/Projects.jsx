@@ -1,5 +1,5 @@
-import { useState, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useContext, useCallback } from "react";
+import { useNavigate, NavLink } from "react-router-dom";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
@@ -16,14 +16,25 @@ function ProjectCard({ project, taskCount, done, memberCount, onEdit, onDelete, 
   const pct = taskCount ? Math.round((done / taskCount) * 100) : 0;
   const color = project.color || "var(--accent)";
 
+  const handleCardKeyDown = (e) => {
+    if (!onClick) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onClick(e);
+    }
+  };
+
   return (
-    <div 
-      className="project-card" 
-      onClick={onClick} 
+    <NavLink
+      className="project-card"
+      onClick={onClick}
+      onKeyDown={handleCardKeyDown}
       style={{ "--project-color": color }}
+      role="button"
+      tabIndex={0}
     >
       <div className="project-card-top">
-        <span className="project-emoji">{project.emoji || "🎨"}</span>
+        <span className="project-emoji">{project.emoji}</span>
         <span className="project-name">{project.title}</span>
       </div>
 
@@ -46,12 +57,12 @@ function ProjectCard({ project, taskCount, done, memberCount, onEdit, onDelete, 
       </div>
 
       {(onEdit || onDelete) && (
-        <div className="project-card-actions" onClick={(e) => e.stopPropagation()}>
-          {onEdit && <button className="icon-btn edit" onClick={onEdit} title="Edit Project">✎</button>}
-          {onDelete && <button className="icon-btn del" onClick={onDelete} title="Delete Project">🗑️</button>}
+        <div className="project-card-actions">
+          {onEdit && <button className="icon-btn edit" onClick={(e) => { e.stopPropagation(); onEdit(e); }} title="Edit Project">✎</button>}
+          {onDelete && <button className="icon-btn del" onClick={(e) => { e.stopPropagation(); onDelete(e); }} title="Delete Project">🗑️</button>}
         </div>
       )}
-    </div>
+    </NavLink>
   );
 }
 
@@ -72,30 +83,36 @@ function Projects() {
 
   const showToast = (type, title, message) => setToast({ type, title, message });
 
-  const refreshProjects = async () => {
-    const res = await API.get("/projects");
-    setProjects(res.data || []);
-  };
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await API.get("/projects", { params: {limit: 12, search } });
+      setProjects(res.data.projects || []);
+    } catch (err) {
+      showToast("error", "Could not load projects", err.response?.data?.error || "Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [search]);
 
   useEffect(() => {
-    const load = async () => {
+    const loadData = async () => {
       try {
-        const [pRes, tRes, tmRes] = await Promise.all([
-          API.get("/projects"),
-          API.get("/tasks"),
+        const [tRes, tmRes] = await Promise.all([
+          API.get("/tasks", { params: { limit: 1000 } }), // Get all tasks for stats
           API.get("/teams"),
         ]);
-        setProjects(pRes.data || []);
-        setTasks(tRes.data || []);
+        setTasks(tRes.data.tasks || tRes.data || []);
         setTeams(tmRes.data || []);
       } catch (err) {
-        showToast("error", "Could not load projects", err.response?.data?.error || "Please try again.");
-      } finally {
-        setLoading(false);
+        console.error("Failed to load metadata", err);
       }
     };
-    load();
+    loadData();
   }, []);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [search, fetchProjects]);
 
   const openCreate = () => { setEditingProject(null); setModalOpen(true); };
   const openEdit = (p) => { setEditingProject(p); setModalOpen(true); };
@@ -111,7 +128,7 @@ function Projects() {
         showToast("success", "Project created", `${form.title} was created.`);
       }
       closeModal();
-      await refreshProjects();
+      fetchProjects();
     } catch (err) {
       showToast("error", editingProject ? "Update failed" : "Creation failed", err.response?.data?.error || "Please try again.");
     }
@@ -119,80 +136,87 @@ function Projects() {
 
   const deleteProject = async (project, e) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete "${project.title}"? This removes all tasks in the project.`)) return;
+    if (!globalThis.confirm(`Delete "${project.title}"? This removes all tasks in the project.`)) return;
     try {
       await API.delete(`/projects/${project.id}`);
       showToast("success", "Project deleted", `${project.title} was removed.`);
-      await refreshProjects();
-      const tRes = await API.get("/tasks");
-      setTasks(tRes.data || []);
+      fetchProjects();
     } catch (err) {
       showToast("error", "Delete failed", err.response?.data?.error || "Please try again.");
     }
   };
 
   const canModify = (p) => user?.role === "admin" || String(p.created_by) === String(user?.id);
-
   const isAdmin = user?.role === "admin";
 
+  const topbarActions = (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input
+        className="form-input"
+        style={{ width: 180, height: 32, fontSize: 13 }}
+        placeholder="Search projects..."
+        value={search}
+        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+      />
+      {isAdmin && <button className="btn-sm btn-accent" onClick={openCreate}>+ New Project</button>}
+    </div>
+  );
+
   return (
-    <PageShell
-      title="Projects"
-      actions={isAdmin && <button className="btn-sm btn-accent" onClick={openCreate}>+ New Project</button>}
-    >
+    <PageShell title="Projects" actions={topbarActions}>
       {loading ? (
         <LoadingState label="Loading projects" />
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
-          {projects.length === 0 && (
-            <div style={{ gridColumn: "1 / -1" }}>
-              <EmptyState icon="📭" text="No projects yet. Create your first project!" />
-            </div>
-          )}
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 14 }}>
+            {projects.length === 0 && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <EmptyState icon="📭" text={search ? "No projects match your search." : "No projects yet."} />
+              </div>
+            )}
 
-          {projects.map((p) => {
-            const pTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
-            const done = pTasks.filter((t) => t.status === "Done").length;
-            const team = teams.find(t => String(t.id) === String(p.team_id));
-            return (
-              <ProjectCard
-                key={p.id}
-                project={p}
-                taskCount={pTasks.length}
-                done={done}
-                memberCount={team?.member_count || 0}
-                onClick={() => navigate(`/projects/${p.id}`)}
-                onEdit={canModify(p) ? () => openEdit(p) : undefined}
-                onDelete={canModify(p) ? (e) => deleteProject(p, e) : undefined}
-              />
-            );
-          })}
+            {projects.map((p) => {
+              const pTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
+              const done = pTasks.filter((t) => t.status === "Done").length;
+              const team = teams.find(t => String(t.id) === String(p.team_id));
+              return (
+                <ProjectCard
+                  key={p.id}
+                  project={p}
+                  taskCount={pTasks.length}
+                  done={done}
+                  memberCount={team?.member_count || 0}
+                  onClick={() => navigate(`/projects/${p.id}`)}
+                  onEdit={canModify(p) ? () => openEdit(p) : undefined}
+                  onDelete={canModify(p) ? (e) => deleteProject(p, e) : undefined}
+                />
+              );
+            })}
 
-          {/* "New Project" ghost card */}
-          {isAdmin && (
-            <div
-              className="project-card"
-              onClick={openCreate}
-              style={{ 
-                borderStyle: "dashed", 
-                display: "flex", 
-                flexDirection: "column", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                minHeight: 250, 
-                opacity: 0.5, 
-                transition: "all 0.2s",
-                "--project-color": "transparent"
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
-              onMouseOut={(e) => (e.currentTarget.style.opacity = "0.5")}
-            >
-              <div style={{ fontSize: 32, marginBottom: 12, color: "var(--text3)" }}>+</div>
-              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text2)" }}>New Project</div>
-            </div>
-          )}
-        </div>
-      )}
+            {/* "New Project" ghost card */}
+            {isAdmin && !search && projects.length < 12 && (
+              <div
+                className="project-card"
+                onClick={openCreate}
+                style={{
+                  borderStyle: "dashed",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: 250,
+                  opacity: 0.5,
+                  transition: "all 0.2s",
+                  "--project-color": "transparent"
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
+                onMouseOut={(e) => (e.currentTarget.style.opacity = "0.5")}
+              >
+                <div style={{ fontSize: 32, marginBottom: 12, color: "var(--text3)" }}>+</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text2)" }}>New Project</div>
+              </div>
+            )}
+          </div>
 
       <Modal open={modalOpen} onClose={closeModal} title={editingProject ? "Edit Project" : "New Project"}>
         <div style={{ padding: "0 24px 24px" }}>
