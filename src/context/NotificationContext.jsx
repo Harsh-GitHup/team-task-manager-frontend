@@ -80,7 +80,7 @@ export const NotificationProvider = ({ children }) => {
       newSocket.disconnect();
       setSocket(null);
     };
-  }, [user, socket]);
+  }, [user]);
 
   const clearAll = () => {
     setNotifications([]);

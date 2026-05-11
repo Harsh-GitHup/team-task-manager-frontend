@@ -7,8 +7,11 @@ import { useUI } from "../context/UIContext";
 
 function Sidebar() {
   const { user, logout } = useContext(AuthContext);
-  const { unreadCount } = useNotifications();
+  const { chatNotifications } = useNotifications();
   const { isSidebarOpen } = useUI();
+  
+  // Total chat messages across all teams
+  const totalChatNotifs = Object.values(chatNotifications).reduce((a, b) => a + b, 0);
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
@@ -26,10 +29,13 @@ function Sidebar() {
 
     const loadProjects = async () => {
       try {
-        const res = await API.get("/projects");
-        if (!cancelled) setProjects(res.data || []);
-      } catch (error) {
+        const res = await API.get("/projects", { params: { limit: 20 } });
+        if (!cancelled) {
+          setProjects(res.data.projects || res.data || []);
+        }
+      } catch (e) {
         if (!cancelled) setProjects([]);
+        console.error("Failed to load projects:", e);
       } finally {
         if (!cancelled) setLoadingProjects(false);
       }
@@ -53,6 +59,7 @@ function Sidebar() {
         </div>
       </div>
 
+      {/* Navigation Items */}
       <div className="sidebar-section">
         <div className="sidebar-section-label">Main</div>
         {navItems.map((item) => (
@@ -64,8 +71,8 @@ function Sidebar() {
           >
             <span className="nav-item-icon">{item.icon}</span>
             <span>{item.label}</span>
-            {item.to === "/chat" && unreadCount > 0 && (
-              <span className="sidebar-badge">{unreadCount}</span>
+            {item.to === "/chat" && totalChatNotifs > 0 && (
+              <span className="sidebar-badge">{totalChatNotifs}</span>
             )}
           </NavLink>
         ))}
@@ -77,25 +84,28 @@ function Sidebar() {
         )}
       </div>
 
+      {/* Projects Section */}
       <div className="sidebar-section sidebar-projects">
         <div className="sidebar-section-label">Projects</div>
-        {loadingProjects ? (
-          <div className="loading-shell" style={{ minHeight: 88 }}>
-            <div className="loading-card" style={{ width: "100%", justifyContent: "center" }}>
-              <div className="loader" />
-              <span>Loading projects...</span>
+        <div style={{ maxHeight: 'calc(100vh - 420px)', overflowY: 'auto' }}>
+          {loadingProjects ? (
+            <div className="loading-shell" style={{ minHeight: 88 }}>
+              <div className="loading-card" style={{ width: "100%", justifyContent: "center" }}>
+                <div className="loader" />
+                <span>Loading...</span>
+              </div>
             </div>
-          </div>
-        ) : projects.length === 0 ? (
-          <div style={{ padding: "8px 10px", color: "var(--text3)", fontSize: 13 }}>No projects yet</div>
-        ) : (
-          projects.map((project) => (
-            <div key={project.id} className="project-item" onClick={() => navigate(`/projects/${project.id}`)}>
-              <span className="project-dot" style={{ background: project.color || "var(--accent)" }} />
-              <span className="truncate">{project.title}</span>
-            </div>
-          ))
-        )}
+          ) : Array.isArray(projects) && projects.length === 0 ? (
+            <div style={{ padding: "8px 10px", color: "var(--text3)", fontSize: 13 }}>No projects yet</div>
+          ) : Array.isArray(projects) ? (
+            projects.map((project) => (
+              <div key={project.id} className="project-item" onClick={() => navigate(`/projects/${project.id}`)}>
+                <span className="project-dot" style={{ background: project.color || "var(--accent)" }} />
+                <span className="truncate">{project.title}</span>
+              </div>
+            ))
+          ) : null}
+        </div>
       </div>
 
       <div className="sidebar-footer">
