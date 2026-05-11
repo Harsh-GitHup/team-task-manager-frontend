@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, useContext } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import API from "../api";
-import { AuthContext } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
@@ -37,23 +36,24 @@ function FieldRow({ label, children }) {
 //  Admin page
 // ─────────────────────────────────────────────────────────
 function Admin() {
-  const { user: currentUser } = useContext(AuthContext);
 
-  const [teams, setTeams]           = useState([]);
-  const [users, setUsers]           = useState([]);
-  const [projects, setProjects]     = useState([]);
-  const [members, setMembers]       = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [members, setMembers] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
-  const [teamName, setTeamName]     = useState("");
+  const [teamName, setTeamName] = useState("");
   const [teamMemberId, setTeamMemberId] = useState("");
   const [teamHeadId, setTeamHeadId] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+
   const [projectForm, setProjectForm] = useState({ title: "", description: "" });
-  const [taskForm, setTaskForm]       = useState({ title: "", project_id: "", assigned_to: "" });
-  const [teamModalOpen, setTeamModalOpen]     = useState(false);
-  const [editingTeam, setEditingTeam]         = useState(null);
+  const [taskForm, setTaskForm] = useState({ title: "", project_id: "", assigned_to: "" });
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState(null);
   const [roleModalMember, setRoleModalMember] = useState(null);
-  const [roleModalValue, setRoleModalValue]   = useState("member");
-  const [toast, setToast]   = useState(null);
+  const [roleModalValue, setRoleModalValue] = useState("member");
+  const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const showToast = (type, title, message) => setToast({ type, title, message });
@@ -64,24 +64,35 @@ function Admin() {
   );
 
   // ── API helpers ──
-  const refreshTeams   = async () => { const r = await API.get("/teams"); setTeams(r.data || []); };
+  const refreshTeams = async () => { const r = await API.get("/teams"); setTeams(r.data || []); };
   const refreshMembers = async (id = selectedTeamId) => {
     if (!id) { setMembers([]); return; }
     const r = await API.get(`/teams/${id}/members`);
     setMembers(r.data || []);
   };
 
+  const fetchUsers = useCallback(async (query = "") => {
+    try {
+      const res = await API.get("/auth/users", { params: { search: query } });
+      setUsers(res.data || []);
+    } catch (err) {
+      console.error("Fetch users failed", err);
+    }
+  }, []);
+
   // ── Initial load ──
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const [tRes, uRes, pRes] = await Promise.all([API.get("/teams"), API.get("/auth/users"), API.get("/projects")]);
+        const [tRes, pRes] = await Promise.all([API.get("/teams"), API.get("/projects")]);
         if (cancelled) return;
         const loadedTeams = tRes.data || [];
         setTeams(loadedTeams);
-        setUsers(uRes.data || []);
-        setProjects(pRes.data || []);
+        setProjects(pRes.data.projects || pRes.data || []);
+
+        await fetchUsers(""); // Initial user load
+
         const firstId = loadedTeams[0] ? String(loadedTeams[0].id) : "";
         setSelectedTeamId((prev) => prev || firstId);
       } catch (err) {
@@ -92,15 +103,28 @@ function Admin() {
     };
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [fetchUsers]);
+
+  // Debounced user search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchUsers(userSearch);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [userSearch, fetchUsers]);
 
   // ── Load members when team changes ──
   useEffect(() => {
     let cancelled = false;
-    if (!selectedTeamId) { setMembers([]); return; }
+    if (!selectedTeamId) {
+      // Avoid synchronous setState inside effect which can cause cascading renders
+      // schedule clearing members asynchronously
+      setTimeout(() => setMembers([]), 0);
+      return;
+    }
     API.get(`/teams/${selectedTeamId}/members`)
       .then((r) => { if (!cancelled) setMembers(r.data || []); })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, [selectedTeamId]);
 
@@ -108,7 +132,9 @@ function Admin() {
   const createInvite = async () => {
     try {
       const res = await API.post("/invites", { team_id: selectedTeamId });
-      await navigator.clipboard.writeText(res.data.link);
+      // Build link on frontend using current origin to avoid localhost issues in deployment
+      const inviteLink = `${globalThis.location.origin}/invite/${res.data.token}`;
+      await navigator.clipboard.writeText(inviteLink);
       showToast("success", "Invite created", "Invite link copied to clipboard.");
     } catch (err) { showToast("error", "Could not create invite", err.response?.data?.error || "Please try again."); }
   };
@@ -149,7 +175,7 @@ function Admin() {
       await API.post("/projects", { title: projectForm.title.trim(), description: projectForm.description.trim(), team_id: selectedTeamId });
       setProjectForm({ title: "", description: "" });
       showToast("success", "Project created", "Project created successfully.");
-      const r = await API.get("/projects"); setProjects(r.data || []);
+      const r = await API.get("/projects"); setProjects(r.data.projects || r.data || []);
     } catch (err) { showToast("error", "Project creation failed", err.response?.data?.error || "Please try again."); }
   };
 
@@ -172,7 +198,7 @@ function Admin() {
   };
 
   const deleteTeam = async (team) => {
-    if (!window.confirm(`Delete team "${team.name}"?`)) return;
+    if (!globalThis.confirm(`Delete team "${team.name}"?`)) return;
     try {
       await API.delete(`/teams/${team.id}`);
       showToast("success", "Team deleted", `${team.name} was removed.`);
@@ -192,7 +218,7 @@ function Admin() {
   };
 
   const deleteMember = async (m) => {
-    if (!window.confirm(`Remove ${m.name} from this team?`)) return;
+    if (!globalThis.confirm(`Remove ${m.name} from this team?`)) return;
     try {
       await API.delete(`/teams/${selectedTeamId}/members/${m.id}`);
       showToast("success", "Member removed", `${m.name} was removed.`);
@@ -230,22 +256,24 @@ function Admin() {
 
         {/* ── Teams list ── */}
         <SectionPanel title="All Teams">
-          {teams.length === 0 ? (
-            <EmptyState icon="🧩" text="No teams yet. Create one below." compact />
-          ) : (
-            teams.map((team) => (
-              <div key={team.id} className="member-row" style={{ justifyContent: "space-between" }}>
-                <div>
-                  <div className="member-name">{team.name}</div>
-                  <div className="member-email">{team.admin_name || "Team owner"}</div>
+          <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+            {teams.length === 0 ? (
+              <EmptyState icon="🧩" text="No teams yet. Create one below." compact />
+            ) : (
+              teams.map((team) => (
+                <div key={team.id} className="member-row" style={{ justifyContent: "space-between" }}>
+                  <div>
+                    <div className="member-name">{team.name}</div>
+                    <div className="member-email">{team.admin_name || "Team owner"}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="icon-btn edit" onClick={() => { setEditingTeam(team); setTeamModalOpen(true); }}>✎</button>
+                    <button className="icon-btn del" onClick={() => deleteTeam(team)}>🗑️</button>
+                  </div>
                 </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button className="icon-btn edit" onClick={() => { setEditingTeam(team); setTeamModalOpen(true); }}>✎</button>
-                  <button className="icon-btn del" onClick={() => deleteTeam(team)}>Del</button>
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </SectionPanel>
 
         {/* ── Two-column ── */}
@@ -271,41 +299,56 @@ function Admin() {
               </div>
             </FieldRow>
 
-            <FieldRow label="Add Member">
-              <div style={{ display: "flex", gap: 8 }}>
-                <select className="form-input" style={{ flex: 1 }} value={teamMemberId} onChange={(e) => setTeamMemberId(e.target.value)}>
-                  <option value="">Select user...</option>
-                  {nonAdmins.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}
-                </select>
-                <button className="btn-sm btn-accent" onClick={addMember}>Add</button>
-              </div>
-            </FieldRow>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", textTransform: "uppercase", marginBottom: 12 }}>User Selection (Filters below)</div>
+              <input
+                className="form-input"
+                style={{ width: "100%", marginBottom: 12, height: 32, fontSize: 13 }}
+                placeholder="🔍 Search users by name or email..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+              />
 
-            <FieldRow label="Set Team Head">
-              <div style={{ display: "flex", gap: 8 }}>
-                <select className="form-input" style={{ flex: 1 }} value={teamHeadId} onChange={(e) => setTeamHeadId(e.target.value)}>
-                  <option value="">Select team head...</option>
-                  {nonAdmins.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
-                <button className="btn-sm btn-ghost" onClick={setHead} style={{ whiteSpace: "nowrap" }}>Set Head</button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <FieldRow label="Add Member">
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <select className="form-input" style={{ flex: 1 }} value={teamMemberId} onChange={(e) => setTeamMemberId(e.target.value)}>
+                      <option value="">Select user...</option>
+                      {nonAdmins.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}
+                    </select>
+                    <button className="btn-sm btn-accent" onClick={addMember}>Add</button>
+                  </div>
+                </FieldRow>
+
+                <FieldRow label="Set Team Head">
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <select className="form-input" style={{ flex: 1 }} value={teamHeadId} onChange={(e) => setTeamHeadId(e.target.value)}>
+                      <option value="">Select head...</option>
+                      {nonAdmins.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                    <button className="btn-sm btn-ghost" onClick={setHead} style={{ whiteSpace: "nowrap" }}>Set Head</button>
+                  </div>
+                </FieldRow>
               </div>
-            </FieldRow>
+            </div>
 
             {/* Members list */}
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text2)" }}>Team Members</span>
+                <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text2)" }}>Current Team Members</span>
                 <span style={{ fontSize: 11, color: "var(--text3)", background: "var(--bg3)", padding: "2px 8px", borderRadius: 99 }}>
-                  {members.length} member{members.length !== 1 ? "s" : ""}
+                  {members.length}
                 </span>
               </div>
-              {members.length === 0 ? (
-                <EmptyState icon="👥" text="No members in this team yet." compact />
-              ) : (
-                members.map((m) => (
-                  <MemberCard key={m.id} member={m} canEdit onEdit={openRoleModal} onDelete={deleteMember} />
-                ))
-              )}
+              <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+                {members.length === 0 ? (
+                  <EmptyState icon="👥" text="No members in this team yet." compact />
+                ) : (
+                  members.map((m) => (
+                    <MemberCard key={m.id} member={m} canEdit onEdit={openRoleModal} onDelete={deleteMember} />
+                  ))
+                )}
+              </div>
             </div>
           </SectionPanel>
 
@@ -314,29 +357,28 @@ function Admin() {
 
             {/* Assign Projects */}
             <SectionPanel title="Assign Projects">
-              <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 14 }}>Projects are linked to a team so the whole team can see them.</p>
+              <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 14 }}>Link projects to the selected team.</p>
               <div className="form-group">
-                <label>Project Title</label>
-                <input className="form-input" value={projectForm.title} onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })} placeholder="Project title..." />
+                <label htmlFor="project-title">Project Title</label>
+                <input id="project-title" className="form-input" value={projectForm.title} onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })} placeholder="Project title..." />
               </div>
               <div className="form-group">
-                <label>Description</label>
-                <textarea className="form-input" value={projectForm.description} onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })} placeholder="Project description..." style={{ minHeight: 64, resize: "vertical" }} />
+                <label htmlFor="project-description">Description</label>
+                <textarea id="project-description" className="form-input" value={projectForm.description} onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })} placeholder="Project description..." style={{ minHeight: 64, resize: "vertical" }} />
               </div>
               <button className="btn-sm btn-accent" style={{ width: "100%" }} onClick={createProject}>
-                + Create Project for Selected Team
+                + Create Project
               </button>
 
               {/* Team projects */}
               {selectedTeamProjects.length > 0 && (
-                <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text2)", marginBottom: 8 }}>
+                <div style={{ marginTop: 14, borderTop: "1px solid var(--border)", paddingTop: 12, maxHeight: 200, overflowY: 'auto' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text3)", marginBottom: 8 }}>
                     Team Projects ({selectedTeamProjects.length})
                   </div>
                   {selectedTeamProjects.map((p) => (
-                    <div key={p.id} style={{ padding: "10px 14px", background: "var(--bg3)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", marginBottom: 6 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{p.emoji || "📁"} {p.title}</div>
-                      {p.description && <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 2 }}>{p.description}</div>}
+                    <div key={p.id} style={{ padding: "8px 12px", background: "var(--bg3)", borderRadius: 6, border: "1px solid var(--border)", marginBottom: 4 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{p.emoji || "📁"} {p.title}</div>
                     </div>
                   ))}
                 </div>
@@ -345,22 +387,22 @@ function Admin() {
 
             {/* Assign Tasks */}
             <SectionPanel title="Assign Tasks">
-              <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 14 }}>Create a task, pick a project, and assign it to a team member.</p>
+              <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 14 }}>Quickly create and assign tasks.</p>
               <div className="form-group">
-                <label>Task Title</label>
-                <input className="form-input" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="Task title..." />
+                <label htmlFor="task-title">Task Title</label>
+                <input id="task-title" className="form-input" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="Task title..." />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Project (optional)</label>
-                  <select className="form-input" value={taskForm.project_id} onChange={(e) => setTaskForm({ ...taskForm, project_id: e.target.value })}>
+                  <label htmlFor="task-project">Project</label>
+                  <select id="task-project" className="form-input" value={taskForm.project_id} onChange={(e) => setTaskForm({ ...taskForm, project_id: e.target.value })}>
                     <option value="">No project</option>
                     {selectedTeamProjects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
                   </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Assignee (optional)</label>
-                  <select className="form-input" value={taskForm.assigned_to} onChange={(e) => setTaskForm({ ...taskForm, assigned_to: e.target.value })}>
+                  <label htmlFor="task-assignee">Assignee</label>
+                  <select id="task-assignee" className="form-input" value={taskForm.assigned_to} onChange={(e) => setTaskForm({ ...taskForm, assigned_to: e.target.value })}>
                     <option value="">Unassigned</option>
                     {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
@@ -385,12 +427,12 @@ function Admin() {
       <Modal open={!!roleModalMember} onClose={() => setRoleModalMember(null)} title="Edit Member Role">
         <div style={{ padding: "0 24px 24px" }}>
           <div className="form-group">
-            <label>Member</label>
-            <input className="form-input" value={roleModalMember?.name || ""} disabled />
+            <label htmlFor="role-member">Member</label>
+            <input id="role-member" className="form-input" value={roleModalMember?.name || ""} disabled />
           </div>
           <div className="form-group">
-            <label>Role</label>
-            <select className="form-input" value={roleModalValue} onChange={(e) => setRoleModalValue(e.target.value)}>
+            <label htmlFor="role-value">Role</label>
+            <select id="role-value" className="form-input" value={roleModalValue} onChange={(e) => setRoleModalValue(e.target.value)}>
               <option value="member">Member</option>
               <option value="head">Head</option>
             </select>
