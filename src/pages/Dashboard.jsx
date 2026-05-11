@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useCallback } from "react";
 import { Link } from "react-router-dom";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
@@ -6,7 +6,6 @@ import { io } from "socket.io-client";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
-import MemberCard from "../components/MemberCard";
 import Toast from "../components/Toast";
 import TaskRow from "../components/TaskRow";
 import TaskForm from "../components/TaskForm";
@@ -31,31 +30,45 @@ function Dashboard() {
   const { user } = useContext(AuthContext);
 
   const [projects, setProjects] = useState([]);
-  const [tasks, setTasks]       = useState([]);
-  const [users, setUsers]       = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
   const [activities, setActivities] = useState([]);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
-  const [editingTask, setEditingTask]     = useState(null);
-  const [toast, setToast]                 = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
+  const [toast, setToast] = useState(null);
 
   const showToast = (type, title, message) => setToast({ type, title, message });
 
-  const fetchTasks = async () => {
-    const res = await API.get("/tasks").catch(() => ({ data: [] }));
-    setTasks(res.data || []);
-  };
+  const fetchTasks = useCallback(async () => {
+    try {
+      // For dashboard stats, we might want a higher limit to get accurate totals
+      const res = await API.get("/tasks", { params: { limit: 1000 } });
+      setTasks(res.data.tasks || res.data || []);
+    } catch (err) {
+      console.error("Fetch tasks failed", err);
+    }
+  }, []);
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await API.get("/projects", { params: { limit: 1000 } });
+      setProjects(res.data.projects || res.data || []);
+    } catch (err) {
+      console.error("Fetch projects failed", err);
+    }
+  }, []);
 
   useEffect(() => {
     const load = async () => {
       try {
         const [pRes, tRes, uRes, aRes] = await Promise.all([
-          API.get("/projects"),
-          API.get("/tasks"),
+          API.get("/projects", { params: { limit: 1000 } }),
+          API.get("/tasks", { params: { limit: 1000 } }),
           API.get("/auth/users").catch(() => ({ data: [] })),
           API.get("/activities").catch(() => ({ data: [] })),
         ]);
-        setProjects(pRes.data || []);
-        setTasks(tRes.data || []);
+        setProjects(pRes.data.projects || pRes.data || []);
+        setTasks(tRes.data.tasks || tRes.data || []);
         setUsers(uRes.data || []);
         setActivities(aRes.data || []);
       } catch (err) {
@@ -66,19 +79,19 @@ function Dashboard() {
 
     const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
     socket.on("refresh_tasks", fetchTasks);
-    socket.on("refresh_projects", () => API.get("/projects").then((r) => setProjects(r.data || [])));
+    socket.on("refresh_projects", fetchProjects);
     return () => socket.disconnect();
-  }, []);
+  }, [fetchTasks, fetchProjects]);
 
   // Derived stats
-  const today   = new Date().toISOString().split("T")[0];
-  const done    = tasks.filter((t) => t.status === "Done").length;
-  const inprog  = tasks.filter((t) => t.status === "In Progress").length;
+  const today = new Date().toISOString().split("T")[0];
+  const done = tasks.filter((t) => t.status === "Done").length;
+  const inprog = tasks.filter((t) => t.status === "In Progress").length;
   const overdue = tasks.filter((t) => t.due_date && String(t.due_date).slice(0, 10) < today && t.status !== "Done").length;
   const activeTasks = tasks.filter((t) => t.status !== "Done").slice(0, 5);
 
   // Modal handlers
-  const openEdit  = (task) => { setEditingTask(task); setTaskModalOpen(true); };
+  const openEdit = (task) => { setEditingTask(task); setTaskModalOpen(true); };
   const closeModal = () => { setTaskModalOpen(false); setEditingTask(null); };
 
   const saveTask = async (form) => {
@@ -108,10 +121,10 @@ function Dashboard() {
     >
       {/* ── Stat row ── */}
       <div className="stats-grid">
-        <StatCard label="TOTAL TASKS"  value={tasks.length} sub={`across ${projects.length} projects`} variant="purple" />
-        <StatCard label="COMPLETED"    value={done}         sub={`${tasks.length ? Math.round((done / tasks.length) * 100) : 0}% done rate`} variant="green" />
-        <StatCard label="IN PROGRESS"  value={inprog}       sub={`${users.length} team members`}         variant="amber" />
-        <StatCard label="OVERDUE"      value={overdue}      sub={overdue === 0 ? "All on track ✓" : "Need attention"} variant="red" />
+        <StatCard label="TOTAL TASKS" value={tasks.length} sub={`across ${projects.length} projects`} variant="purple" />
+        <StatCard label="COMPLETED" value={done} sub={`${tasks.length ? Math.round((done / tasks.length) * 100) : 0}% done rate`} variant="green" />
+        <StatCard label="IN PROGRESS" value={inprog} sub={`${users.length} team members`} variant="amber" />
+        <StatCard label="OVERDUE" value={overdue} sub={overdue === 0 ? "All on track ✓" : "Need attention"} variant="red" />
       </div>
 
       {/* ── Two-column layout ── */}
@@ -143,8 +156,8 @@ function Dashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 {projects.map((p) => {
                   const pTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
-                  const pDone  = pTasks.filter((t) => t.status === "Done").length;
-                  const pct    = pTasks.length ? Math.round((pDone / pTasks.length) * 100) : 0;
+                  const pDone = pTasks.filter((t) => t.status === "Done").length;
+                  const pct = pTasks.length ? Math.round((pDone / pTasks.length) * 100) : 0;
                   return (
                     <div key={p.id}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -177,14 +190,14 @@ function Dashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 {activities.slice(0, 5).map((a) => (
                   <div key={a.id} className="activity-item" style={{ gap: 14 }}>
-                    <div className="activity-avatar" style={{ 
+                    <div className="activity-avatar" style={{
                       width: 32, height: 32, fontSize: 11,
-                      background: "rgba(124,106,255,0.15)", color: "var(--accent2)" 
+                      background: "rgba(124,106,255,0.15)", color: "var(--accent2)"
                     }}>
                       {(a.user_name || "?").slice(0, 2).toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div className="activity-text" style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: a.action.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text)">$1</strong>') }} />
+                      <div className="activity-text" style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: (a.action || "").replaceAll(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text)">$1</strong>') }} />
                       <div className="activity-time" style={{ marginTop: 4, fontSize: 11, opacity: 0.6 }}>
                         {new Date(a.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
@@ -208,15 +221,15 @@ function Dashboard() {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{m.name}</div>
-                      <div style={{ fontSize: 11, color: "var(--text3)" }}>{mTasks} active task{mTasks !== 1 ? "s" : ""}</div>
+                      <div style={{ fontSize: 11, color: "var(--text3)" }}>{mTasks} active task{mTasks === 1 ? "" : "s"}</div>
                     </div>
-                    <div style={{ 
+                    <div style={{
                       fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 4,
                       background: m.role === 'admin' ? "rgba(124,106,255,0.15)" : "rgba(255,255,255,0.05)",
                       color: m.role === 'admin' ? "var(--accent2)" : "var(--text3)",
                       letterSpacing: "0.5px"
                     }}>
-                      {m.role.toUpperCase()}
+                      {(m.role || "user").toUpperCase()}
                     </div>
                   </div>
                 );
