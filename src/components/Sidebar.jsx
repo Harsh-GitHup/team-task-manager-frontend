@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
@@ -12,7 +12,6 @@ function Sidebar() {
   
   // Total chat messages across all teams
   const totalChatNotifs = Object.values(chatNotifications).reduce((a, b) => a + b, 0);
-  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
@@ -88,23 +87,35 @@ function Sidebar() {
       <div className="sidebar-section sidebar-projects">
         <div className="sidebar-section-label">Projects</div>
         <div style={{ maxHeight: 'calc(100vh - 420px)', overflowY: 'auto' }}>
-          {loadingProjects ? (
-            <div className="loading-shell" style={{ minHeight: 88 }}>
-              <div className="loading-card" style={{ width: "100%", justifyContent: "center" }}>
-                <div className="loader" />
-                <span>Loading...</span>
+          {(() => {
+            if (loadingProjects) {
+              return (
+                <div className="loading-shell" style={{ minHeight: 88 }}>
+                  <div className="loading-card" style={{ width: "100%", justifyContent: "center" }}>
+                    <div className="loader" />
+                    <span>Loading...</span>
+                  </div>
+                </div>
+              );
+            }
+
+            return !Array.isArray(projects) || projects.length === 0 ? (
+              <div style={{ padding: "8px 10px", color: "var(--text3)", fontSize: 13 }}>No projects yet</div>
+            ) : (
+              <div>
+                {projects.map((project) => (
+                  <NavLink
+                    key={project.id}
+                    to={`/projects/${project.id}`}
+                    className="project-item"
+                  >
+                    <span className="project-dot" style={{ background: project.color || "var(--accent)" }} />
+                    <span className="truncate">{project.title}</span>
+                  </NavLink>
+                ))}
               </div>
-            </div>
-          ) : Array.isArray(projects) && projects.length === 0 ? (
-            <div style={{ padding: "8px 10px", color: "var(--text3)", fontSize: 13 }}>No projects yet</div>
-          ) : Array.isArray(projects) ? (
-            projects.map((project) => (
-              <div key={project.id} className="project-item" onClick={() => navigate(`/projects/${project.id}`)}>
-                <span className="project-dot" style={{ background: project.color || "var(--accent)" }} />
-                <span className="truncate">{project.title}</span>
-              </div>
-            ))
-          ) : null}
+            );
+          })()}
         </div>
       </div>
 
@@ -116,7 +127,11 @@ function Sidebar() {
           <div className="user-info">
             <div className="user-name">{user?.name}</div>
             <div className="user-role">
-              {user?.role === 'admin' ? '⚡ Admin' : user?.role === 'head' ? '🔰 Head' : '👤 Member'}
+              {(() => {
+                if (user?.role === 'admin') return '⚡ Admin';
+                if (user?.role === 'head') return '🔰 Head';
+                return '👤 Member';
+              })()}
             </div>
           </div>
           <button className="logout-btn" onClick={logout} type="button">
