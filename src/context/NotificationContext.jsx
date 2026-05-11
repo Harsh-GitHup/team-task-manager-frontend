@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 
@@ -9,48 +9,108 @@ export const useNotifications = () => useContext(NotificationContext);
 export const NotificationProvider = ({ children }) => {
   const { user } = useContext(AuthContext);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [chatNotifications, setChatNotifications] = useState({}); // { teamId: count }
-  const [recentMessages, setRecentMessages] = useState([]);
+  const [notifications, setNotifications] = useState([]); // List of notification objects
+  const [chatNotifications, setChatNotifications] = useState({});
+  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setChatNotifications({});
+      if (socket) {
+        socket.disconnect();
+        setSocket(null);
+      }
+      return;
+    }
 
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
-    
-    socket.on("new_message", (message) => {
-      const currentPath = window.location.pathname;
+    const newSocket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
+    setSocket(newSocket);
+
+    // Join company room for global notifications
+    if (user.company_id) {
+      newSocket.emit("join_company", user.company_id);
+    }
+
+    // Handle new chat messages
+    newSocket.on("new_message", (message) => {
+      // Don't notify for own messages
+      if (String(message.sender_id) === String(user.id)) return;
+
+      const currentPath = globalThis.location.pathname;
       const isChatPage = currentPath.startsWith('/chat');
-      
+
       if (!isChatPage || !currentPath.includes(message.team_id)) {
+        const notif = {
+          id: Date.now() + Math.random(),
+          type: 'message',
+          title: `New message from ${message.name || message.email}`,
+          content: message.message,
+          team_id: message.team_id,
+          created_at: new Date().toISOString(),
+          link: '/chat'
+        };
+
+        setNotifications(prev => [notif, ...prev].slice(0, 20));
+        setUnreadCount(prev => prev + 1);
+
+        // Track per-team count for Sidebar/Chat badges
         setChatNotifications(prev => ({
           ...prev,
           [message.team_id]: (prev[message.team_id] || 0) + 1
         }));
-        setUnreadCount(prev => prev + 1);
-        setRecentMessages(prev => [message, ...prev].slice(0, 5));
       }
     });
 
-    return () => socket.disconnect();
-  }, [user]);
+    // Handle activity notifications (Project/Task updates)
+    newSocket.on("new_notification", (notif) => {
+      // Don't notify for own actions
+      if (String(notif.user_id) === String(user.id)) return;
 
-  const clearUnread = (teamId) => {
+      const fullNotif = {
+        id: Date.now() + Math.random(),
+        ...notif
+      };
+      setNotifications(prev => [fullNotif, ...prev].slice(0, 20));
+      setUnreadCount(prev => prev + 1);
+    });
+
+    return () => {
+      newSocket.disconnect();
+      setSocket(null);
+    };
+  }, [user, socket]);
+
+  const clearAll = () => {
+    setNotifications([]);
+    setUnreadCount(0);
+    setChatNotifications({});
+  };
+
+  const clearUnread = () => {
+    setUnreadCount(0);
+  };
+
+  const clearTeamUnread = (teamId) => {
     setChatNotifications(prev => {
-      const count = prev[teamId] || 0;
-      setUnreadCount(total => Math.max(0, total - count));
       const newState = { ...prev };
       delete newState[teamId];
       return newState;
     });
-    setRecentMessages(prev => prev.filter(m => String(m.team_id) !== String(teamId)));
+    // Also remove from general notification list if they are messages for this team
+    setNotifications(prev => prev.filter(n => !(n.type === 'message' && String(n.team_id) === String(teamId))));
   };
 
-  const value = {
+  const value = useMemo(() => ({
+    socket,
     unreadCount,
+    notifications,
     chatNotifications,
-    recentMessages,
-    clearUnread
-  };
+    clearAll,
+    clearUnread,
+    clearTeamUnread
+  }), [socket, unreadCount, notifications, chatNotifications]);
 
   return (
     <NotificationContext.Provider value={value}>

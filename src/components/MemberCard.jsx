@@ -32,7 +32,7 @@ export default function MemberCard({ member, canEdit = false, onEdit, onDelete, 
       {canEdit && (
         <div style={{ display: "flex", gap: 6, marginLeft: 4 }}>
           <button className="icon-btn edit" onClick={() => onEdit?.(member)}>✎</button>
-          <button className="icon-btn del" onClick={() => onDelete?.(member)}>Del</button>
+          <button className="icon-btn del" onClick={() => onDelete?.(member)}>🗑️</button>
         </div>
       )}
     </div>

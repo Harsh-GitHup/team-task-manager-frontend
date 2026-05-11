@@ -6,15 +6,9 @@ import { Link } from "react-router-dom";
 /**
  * PageShell — wraps every authenticated page with the standard
  * `.main > .topbar + .content` layout so pages don't repeat that boilerplate.
- *
- * Props:
- *  title    {string}     Topbar heading text
- *  actions  {ReactNode}  Buttons / selects to put on the right of the topbar
- *  children {ReactNode}  Page body (goes inside .content)
- *  noPad    {boolean}    Skip content padding (useful when embedding full-bleed sections)
  */
 export default function PageShell({ title, actions, children, noPad = false }) {
-  const { unreadCount, recentMessages } = useNotifications();
+  const { unreadCount, notifications, clearAll, clearUnread } = useNotifications();
   const { toggleSidebar } = useUI();
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
@@ -30,6 +24,11 @@ export default function PageShell({ title, actions, children, noPad = false }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  const handleToggleNotifs = () => {
+    if (!showNotifs) clearUnread();
+    setShowNotifs(!showNotifs);
+  };
+
   return (
     <div className="main animate-fade-in">
       <div className="topbar">
@@ -42,8 +41,15 @@ export default function PageShell({ title, actions, children, noPad = false }) {
           {/* Global Notification Icon */}
           <div style={{ position: "relative" }} ref={notifRef}>
             <div 
-              style={{ cursor: "pointer", fontSize: 20 }}
-              onClick={() => setShowNotifs(!showNotifs)}
+              style={{ 
+                cursor: "pointer", 
+                fontSize: 20, 
+                padding: "8px", 
+                borderRadius: "50%",
+                background: showNotifs ? "rgba(124,106,255,0.1)" : "transparent",
+                transition: "all 0.2s"
+              }}
+              onClick={handleToggleNotifs}
             >
               🔔
               {unreadCount > 0 && (
@@ -54,33 +60,43 @@ export default function PageShell({ title, actions, children, noPad = false }) {
             {showNotifs && (
               <div className="notification-dropdown">
                 <div className="notif-header">
-                  <span>Notifications</span>
-                  {unreadCount > 0 && <span style={{ fontSize: 11, color: "var(--accent2)" }}>{unreadCount} new</span>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>Notifications</span>
+                    {notifications.length > 0 && <span className="notif-count">{notifications.length}</span>}
+                  </div>
+                  {notifications.length > 0 && (
+                    <button className="clear-all-btn" onClick={clearAll}>
+                      Clear all
+                    </button>
+                  )}
                 </div>
                 <div className="notif-list">
-                  {recentMessages.length === 0 ? (
+                  {notifications.length === 0 ? (
                     <div className="notif-empty">
                       <div className="notif-empty-icon">🔔</div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>No new messages</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>We'll notify you when someone pings a team.</div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>No new notifications</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>We'll notify you about team activity and messages.</div>
                     </div>
                   ) : (
-                    recentMessages.map((m, idx) => (
+                    notifications.map((n) => (
                       <Link 
-                        to="/chat" 
-                        key={idx} 
+                        to={n.link || "#"} 
+                        key={n.id} 
                         className="notif-item" 
                         onClick={() => setShowNotifs(false)}
                         style={{ display: "block", textDecoration: "none", color: "inherit" }}
                       >
-                        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: "var(--accent2)" }}>
-                          👤 {m.name || m.email}
-                        </div>
-                        <div style={{ fontSize: 12, color: "var(--text)", marginBottom: 4 }}>
-                          {m.message}
-                        </div>
-                        <div style={{ fontSize: 10, color: "var(--text3)" }}>
-                          {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <div className={`notif-icon-circle ${n.type}`}>
+                            {n.type === 'message' ? '💬' : n.type === 'project' ? '📁' : '📋'}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div className="notif-item-title">{n.title}</div>
+                            <div className="notif-item-content">{n.content}</div>
+                            <div className="notif-item-time">
+                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
                         </div>
                       </Link>
                     ))
