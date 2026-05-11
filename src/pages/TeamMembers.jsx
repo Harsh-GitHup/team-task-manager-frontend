@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useContext } from "react";
+import { useEffect, useMemo, useState, useContext, useCallback } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import LoadingState from "../components/LoadingState";
@@ -16,12 +16,12 @@ function RoleModal({ member, role, onRoleChange, onSave, onClose }) {
     <Modal open={!!member} onClose={onClose} title="Edit Member Role">
       <div style={{ padding: "0 24px 24px" }}>
         <div className="form-group">
-          <label>Member</label>
-          <input className="form-input" value={member?.name || ""} disabled />
+          <label htmlFor="member">Member</label>
+          <input className="form-input" id="member" value={member?.name || ""} disabled />
         </div>
         <div className="form-group">
-          <label>Role</label>
-          <select className="form-input" value={role} onChange={(e) => onRoleChange(e.target.value)}>
+          <label htmlFor="role">Role</label>
+          <select className="form-input" id="role" value={role} onChange={(e) => onRoleChange(e.target.value)}>
             <option value="member">Member</option>
             <option value="head">Head</option>
           </select>
@@ -52,7 +52,7 @@ function TeamMembers() {
 
   const showToast = (type, title, message) => setToast({ type, title, message });
 
-  const loadMembers = async (teamId) => {
+  const loadMembers = useCallback(async (teamId) => {
     if (!teamId) { setMembers([]); setAccessDenied(false); return; }
     try {
       const res = await API.get(`/teams/${teamId}/members`);
@@ -66,18 +66,21 @@ function TeamMembers() {
         showToast("error", "Could not load members", err.response?.data?.error || "Please try again.");
       }
     }
-  };
+  }, []);
 
   // Initial data load
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const [teamsRes, tasksRes] = await Promise.all([API.get("/teams"), API.get("/tasks")]);
+        const [teamsRes, tasksRes] = await Promise.all([
+          API.get("/teams"),
+          API.get("/tasks", { params: { limit: 1000 } })
+        ]);
         if (cancelled) return;
         const loadedTeams = teamsRes.data || [];
         setTeams(loadedTeams);
-        setTasks(tasksRes.data || []);
+        setTasks(tasksRes.data.tasks || tasksRes.data || []);
         const firstId = loadedTeams[0] ? String(loadedTeams[0].id) : "";
         setSelectedTeamId(firstId);
         if (firstId) await loadMembers(firstId);
@@ -89,13 +92,12 @@ function TeamMembers() {
     };
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [loadMembers]);
 
-  // Reload when team changes
-  useEffect(() => {
-    if (!selectedTeamId) return;
-    loadMembers(selectedTeamId);
-  }, [selectedTeamId]);
+  const handleTeamChange = async (teamId) => {
+    setSelectedTeamId(teamId);
+    await loadMembers(teamId);
+  };
 
   // Enrich members with task stats
   const memberStats = useMemo(() =>
@@ -124,7 +126,7 @@ function TeamMembers() {
   };
 
   const deleteMember = async (member) => {
-    if (!window.confirm(`Remove ${member.name} from this team?`)) return;
+    if (!globalThis.confirm(`Remove ${member.name} from this team?`)) return;
     try {
       await API.delete(`/teams/${selectedTeamId}/members/${member.id}`);
       showToast("success", "Member removed", `${member.name} was removed.`);
@@ -134,13 +136,13 @@ function TeamMembers() {
     }
   };
 
-  // Team selector for topbar
+  // Team selector for top bar
   const teamSelect = (
     <select
       className="form-input"
-      style={{ maxWidth: 220 }}
+      style={{ maxWidth: 220, height: 42 }}
       value={selectedTeamId}
-      onChange={(e) => setSelectedTeamId(e.target.value)}
+      onChange={(e) => handleTeamChange(e.target.value)}
     >
       <option value="">Select Team</option>
       {teams.map((t) => (
@@ -151,44 +153,43 @@ function TeamMembers() {
 
   return (
     <PageShell title="Team Members" actions={teamSelect}>
-      {loading ? (
-        <LoadingState label="Loading team members" />
-      ) : accessDenied ? (
-        <EmptyState icon="🔒" text="Admin access required." />
-      ) : teams.length === 0 ? (
-        <EmptyState icon="🧩" text="No teams available." />
-      ) : memberStats.length === 0 ? (
-        <EmptyState icon="👥" text="No team members found." />
-      ) : (
-        <div className="panel">
-          {memberStats.map((member) => (
-            <MemberCard
-              key={member.id}
-              member={member}
-              canEdit={canEdit}
-              onEdit={openEdit}
-              onDelete={deleteMember}
-              extra={
-                /* Per-member task progress */
-                <div style={{ textAlign: "right", marginRight: 12, minWidth: 120 }}>
-                  <div style={{ fontSize: 12, color: "var(--text2)" }}>
-                    {member.taskCount} tasks · {member.completed} done
+      {(() => {
+        if (loading) return <LoadingState label="Loading team members" />;
+        if (accessDenied) return <EmptyState icon="🔒" text="Admin access required." />;
+        if (teams.length === 0) return <EmptyState icon="🧩" text="No teams available." />;
+        if (memberStats.length === 0) return <EmptyState icon="👥" text="No team members found." />;
+
+        return (
+          <div className="panel">
+            {memberStats.map((member) => (
+              <MemberCard
+                key={member.id}
+                member={member}
+                canEdit={canEdit}
+                onEdit={openEdit}
+                onDelete={deleteMember}
+                extra={
+                  /* Per-member task progress */
+                  <div style={{ textAlign: "right", marginRight: 12, minWidth: 120 }}>
+                    <div style={{ fontSize: 12, color: "var(--text2)" }}>
+                      {member.taskCount} tasks · {member.completed} done
+                    </div>
+                    <div className="progress-bar" style={{ marginTop: 4 }}>
+                      <div
+                        className="progress-fill"
+                        style={{
+                          width: `${member.percentage}%`,
+                          background: "linear-gradient(90deg, var(--accent), #9b59ff)",
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="progress-bar" style={{ marginTop: 4 }}>
-                    <div
-                      className="progress-fill"
-                      style={{
-                        width: `${member.percentage}%`,
-                        background: "linear-gradient(90deg, var(--accent), #9b59ff)",
-                      }}
-                    />
-                  </div>
-                </div>
-              }
-            />
-          ))}
-        </div>
-      )}
+                }
+              />
+            ))}
+          </div>
+        );
+      })()}
 
       <RoleModal
         member={editingMember}
