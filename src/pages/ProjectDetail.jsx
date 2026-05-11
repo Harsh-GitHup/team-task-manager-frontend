@@ -21,10 +21,22 @@ const STATUS_COLS = [
 // ─────────────────────────────────────────────────────────
 function TaskListItem({ task, canModify, onEdit, onDelete }) {
   const isDone = task.status === "Done";
+  const isInProgress = task.status === "In Progress";
+  let statusBg = "rgba(255,255,255,0.05)";
+  let statusColor = "var(--text3)";
+
+  if (isDone) {
+    statusBg = "rgba(45,212,160,0.12)";
+    statusColor = "var(--green)";
+  } else if (isInProgress) {
+    statusBg = "rgba(124,106,255,0.15)";
+    statusColor = "var(--accent2)";
+  }
   return (
-    <div
+    <button
       className="task-item"
       onClick={() => canModify && onEdit(task)}
+      disabled={!canModify}
       style={{ cursor: canModify ? "pointer" : "default" }}
     >
       <div className="task-check" style={{ background: isDone ? "var(--green)" : "transparent", borderColor: isDone ? "var(--green)" : "var(--border2)" }}>
@@ -36,7 +48,7 @@ function TaskListItem({ task, canModify, onEdit, onDelete }) {
           {task.title}
         </div>
         <div className="task-meta">
-          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, textTransform: "uppercase", background: isDone ? "rgba(45,212,160,0.12)" : task.status === "In Progress" ? "rgba(124,106,255,0.15)" : "rgba(255,255,255,0.05)", color: isDone ? "var(--green)" : task.status === "In Progress" ? "var(--accent2)" : "var(--text3)" }}>
+          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, textTransform: "uppercase", background: statusBg, color: statusColor }}>
             {task.status}
           </span>
           {task.priority && (
@@ -46,12 +58,12 @@ function TaskListItem({ task, canModify, onEdit, onDelete }) {
       </div>
 
       {canModify && (
-        <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-          <button className="icon-btn edit" onClick={() => onEdit(task)}>✎</button>
-          <button className="icon-btn del" onClick={() => onDelete(task)}>🗑️</button>
+        <div style={{ display: "flex", gap: 6 }} >
+          {onEdit && <button className="icon-btn edit" onClick={(e) => { e.stopPropagation(); onEdit(e); }} title="Edit Project">✎</button>}
+          {onDelete && <button className="icon-btn del" onClick={(e) => { e.stopPropagation(); onDelete(e); }} title="Delete Project">🗑️</button>}
         </div>
       )}
-    </div>
+    </button>
   );
 }
 
@@ -60,7 +72,8 @@ function TaskListItem({ task, canModify, onEdit, onDelete }) {
 // ─────────────────────────────────────────────────────────
 function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
   return (
-    <div
+    <button
+      type="button"
       className="kanban-card"
       onClick={() => canModify && onEdit(task)}
       draggable={canModify}
@@ -68,9 +81,9 @@ function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
       style={{ cursor: canModify ? "grab" : "default", position: "relative" }}
     >
       {canModify && (
-        <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-          <button className="icon-btn edit" onClick={() => onEdit(task)}>✎</button>
-          <button className="icon-btn del" onClick={() => onDelete(task)}>🗑️</button>
+        <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }} >
+          {onEdit && <button className="icon-btn edit" onClick={(e) => { e.stopPropagation(); onEdit(e); }} title="Edit Project">✎</button>}
+          {onDelete && <button className="icon-btn del" onClick={(e) => { e.stopPropagation(); onDelete(e); }} title="Delete Project">🗑️</button>}
         </div>
       )}
       <div className="kanban-card-title">{task.title}</div>
@@ -79,7 +92,7 @@ function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
           <span className={`tag tag-${task.priority.toLowerCase()}`} style={{ fontSize: 9 }}>{task.priority.toUpperCase()}</span>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -228,7 +241,7 @@ function ProjectDetail() {
 
       await API.put(`/tasks/${taskId}`, { status });
       showToast("success", "Status updated", `Moved to ${status}`);
-    } catch (err) {
+    } catch {
       showToast("error", "Move failed", "Could not update status.");
       await refreshData(); // Revert on failure
     }
@@ -249,7 +262,7 @@ function ProjectDetail() {
   // Topbar breadcrumb + actions
   const topbarTitle = (
     <>
-      <span style={{ opacity: 0.4, fontSize: 14, fontWeight: 400, cursor: "pointer" }} onClick={() => navigate("/projects")}>Projects</span>
+      <button type="button" style={{ opacity: 0.4, fontSize: 14, fontWeight: 400, cursor: "pointer", background: 'transparent', border: 'none', padding: 0 }} onClick={() => navigate("/projects")}>Projects</button>
       <span style={{ opacity: 0.4, margin: "0 6px" }}>/</span>
       {project.emoji} {project.title}
     </>
@@ -282,8 +295,8 @@ function ProjectDetail() {
 
       {/* ── View tabs ── */}
       <div className="tabs" style={{ marginBottom: 20 }}>
-        <div className={`tab ${tab === "list" ? "active" : ""}`} onClick={() => setTab("list")}>List</div>
-        <div className={`tab ${tab === "kanban" ? "active" : ""}`} onClick={() => setTab("kanban")}>Board</div>
+        <button type="button" className={`tab ${tab === "list" ? "active" : ""}`} onClick={() => setTab("list")}>List</button>
+        <button type="button" className={`tab ${tab === "kanban" ? "active" : ""}`} onClick={() => setTab("kanban")}>Board</button>
       </div>
 
       {/* ── List view ── */}
@@ -305,11 +318,12 @@ function ProjectDetail() {
           {STATUS_COLS.map((col) => {
             const colTasks = tasks.filter((t) => t.status === col.key);
             return (
-              <div
+              <section
                 key={col.key}
                 className="kanban-col"
                 onDragOver={onDragOver}
                 onDrop={(e) => onDrop(e, col.key)}
+                aria-label={`${col.label} column, ${colTasks.length} items`}
               >
                 <div className="kanban-header">
                   <div className="kanban-dot" style={{ background: col.color }} />
@@ -324,7 +338,7 @@ function ProjectDetail() {
                 {colTasks.map((t) => (
                   <KanbanCard key={t.id} task={t} canModify={canModifyTask(t)} onEdit={openTaskEdit} onDelete={deleteTask} onDragStart={onDragStart} />
                 ))}
-              </div>
+              </section>
             );
           })}
         </div>
