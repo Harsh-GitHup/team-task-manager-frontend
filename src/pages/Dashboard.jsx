@@ -36,6 +36,10 @@ function Dashboard() {
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [toast, setToast] = useState(null);
+  const [projectPage, setProjectPage] = useState(1);
+  const [activityPage, setActivityPage] = useState(1);
+  const projectsPerPage = 4;
+  const activitiesPerPage = 5;
 
   const showToast = (type, title, message) => setToast({ type, title, message });
 
@@ -89,6 +93,12 @@ function Dashboard() {
   const inprog = tasks.filter((t) => t.status === "In Progress").length;
   const overdue = tasks.filter((t) => t.due_date && String(t.due_date).slice(0, 10) < today && t.status !== "Done").length;
   const activeTasks = tasks.filter((t) => t.status !== "Done").slice(0, 5);
+  const totalProjectPages = Math.max(1, Math.ceil(projects.length / projectsPerPage));
+  const currentProjectPage = Math.min(projectPage, totalProjectPages);
+  const paginatedProjects = projects.slice((currentProjectPage - 1) * projectsPerPage, currentProjectPage * projectsPerPage);
+  const totalActivityPages = Math.max(1, Math.ceil(activities.length / activitiesPerPage));
+  const currentActivityPage = Math.min(activityPage, totalActivityPages);
+  const paginatedActivities = activities.slice((currentActivityPage - 1) * activitiesPerPage, currentActivityPage * activitiesPerPage);
 
   // Modal handlers
   const openEdit = (task) => { setEditingTask(task); setTaskModalOpen(true); };
@@ -154,7 +164,9 @@ function Dashboard() {
               <EmptyState icon="📂" text="No projects yet." compact />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {projects.map((p) => {
+
+                {/* Pagination */}
+                {paginatedProjects.map((p) => {
                   const pTasks = tasks.filter((t) => String(t.project_id) === String(p.id));
                   const pDone = pTasks.filter((t) => t.status === "Done").length;
                   const pct = pTasks.length ? Math.round((pDone / pTasks.length) * 100) : 0;
@@ -173,6 +185,39 @@ function Dashboard() {
                     </div>
                   );
                 })}
+                {totalProjectPages > 1 && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setProjectPage((p) => Math.max(1, p - 1))}
+                      disabled={currentProjectPage === 1}
+                      style={{
+                        padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
+                        background: currentProjectPage === 1 ? "rgba(255,255,255,0.04)" : "rgba(124,106,255,0.08)",
+                        color: currentProjectPage === 1 ? "var(--text3)" : "var(--text)", cursor: currentProjectPage === 1 ? "not-allowed" : "pointer",
+                        fontSize: 12, fontWeight: 700
+                      }}
+                    >
+                      Prev
+                    </button>
+                    <div style={{ fontSize: 12, color: "var(--text3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                      {currentProjectPage} / {totalProjectPages}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setProjectPage((p) => Math.min(totalProjectPages, p + 1))}
+                      disabled={currentProjectPage === totalProjectPages}
+                      style={{
+                        padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
+                        background: currentProjectPage === totalProjectPages ? "rgba(255,255,255,0.04)" : "rgba(124,106,255,0.08)",
+                        color: currentProjectPage === totalProjectPages ? "var(--text3)" : "var(--text)", cursor: currentProjectPage === totalProjectPages ? "not-allowed" : "pointer",
+                        fontSize: 12, fontWeight: 700
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -188,7 +233,9 @@ function Dashboard() {
               <div style={{ fontSize: 13, color: "var(--text2)", textAlign: "center", padding: 10 }}>No recent activity</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {activities.slice(0, 5).map((a) => (
+
+                {/* Pagination */}
+                {paginatedActivities.map((a) => (
                   <div key={a.id} className="activity-item" style={{ gap: 14 }}>
                     <div className="activity-avatar" style={{
                       width: 32, height: 32, fontSize: 11,
@@ -204,6 +251,39 @@ function Dashboard() {
                     </div>
                   </div>
                 ))}
+                {totalActivityPages > 1 && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
+                      disabled={currentActivityPage === 1}
+                      style={{
+                        padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
+                        background: currentActivityPage === 1 ? "rgba(255,255,255,0.04)" : "rgba(124,106,255,0.08)",
+                        color: currentActivityPage === 1 ? "var(--text3)" : "var(--text)", cursor: currentActivityPage === 1 ? "not-allowed" : "pointer",
+                        fontSize: 12, fontWeight: 700
+                      }}
+                    >
+                      Prev
+                    </button>
+                    <div style={{ fontSize: 12, color: "var(--text3)", fontFamily: "'JetBrains Mono', monospace" }}>
+                      {currentActivityPage} / {totalActivityPages}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActivityPage((p) => Math.min(totalActivityPages, p + 1))}
+                      disabled={currentActivityPage === totalActivityPages}
+                      style={{
+                        padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
+                        background: currentActivityPage === totalActivityPages ? "rgba(255,255,255,0.04)" : "rgba(124,106,255,0.08)",
+                        color: currentActivityPage === totalActivityPages ? "var(--text3)" : "var(--text)", cursor: currentActivityPage === totalActivityPages ? "not-allowed" : "pointer",
+                        fontSize: 12, fontWeight: 700
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
