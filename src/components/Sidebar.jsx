@@ -18,7 +18,7 @@ function Sidebar() {
   const navItems = [
     { to: "/", icon: "🏠", label: "Dashboard" },
     { to: "/projects", icon: "📁", label: "Projects" },
-    { to: "/tasks", icon: "✅", label: "My Tasks" },
+    { to: "/tasks", icon: "✅", label: "Tasks" },
     { to: "/team-members", icon: "👥", label: "Team Members" },
     { to: "/chat", icon: "💬", label: "Chat" },
   ];
