@@ -9,7 +9,7 @@ export default function InviteJoin() {
   const { token } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  
+
   const [invite, setInvite] = useState(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -39,21 +39,22 @@ export default function InviteJoin() {
     }
   };
 
-  if (loading) return <div className="auth-page"><LoadingState label="Verifying invite..." /></div>;
+  if (loading) return <div className="auth-screen"><LoadingState label="Verifying invite..." /></div>;
 
   return (
-    <div className="auth-page">
+    <div className="auth-screen">
+      <div className="auth-grid" />
       <div className="auth-card animate-slide-up">
         <div className="auth-logo">
           <div className="auth-logo-icon">⚡</div>
-          <div className="auth-logo-text">TaskFlow</div>
+          <div className="auth-logo-text">TaskHub</div>
         </div>
 
         {invite ? (
           <>
             <h1 className="auth-title">You're Invited!</h1>
             <p className="auth-sub">
-              You have been invited to join <strong>{invite.team_name || 'a team'}</strong> 
+              You have been invited to join <strong>{invite.team_name || 'a team'}</strong>
               {invite.company_name ? ` at ${invite.company_name}` : ''}.
             </p>
 
@@ -62,8 +63,8 @@ export default function InviteJoin() {
                 <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 20 }}>
                   Logged in as <strong>{user.email}</strong>
                 </p>
-                <button 
-                  className="btn-primary" 
+                <button
+                  className="btn-primary"
                   onClick={handleJoin}
                   disabled={joining}
                 >
@@ -78,9 +79,9 @@ export default function InviteJoin() {
                 <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 20 }}>
                   Please sign up or log in to accept this invitation.
                 </p>
-                <Link 
-                  to={`/signup?invite=${token}`} 
-                  className="btn-primary" 
+                <Link
+                  to={`/signup?invite=${token}`}
+                  className="btn-primary"
                   style={{ display: 'block', textAlign: 'center', textDecoration: 'none' }}
                 >
                   Create Account to Join

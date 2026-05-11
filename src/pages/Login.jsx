@@ -78,8 +78,9 @@ function Login() {
 
         {/* Email */}
         <div className="form-group">
-          <label>Email</label>
+          <label htmlFor="email">Email</label>
           <input
+            id="email"
             className="form-input"
             type="email"
             placeholder="you@company.com"
@@ -91,8 +92,9 @@ function Login() {
 
         {/* Password */}
         <div className="form-group">
-          <label>Password</label>
+          <label htmlFor="password">Password</label>
           <PasswordInput
+            id="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); clearError(); }}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}

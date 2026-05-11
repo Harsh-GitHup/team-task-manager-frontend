@@ -54,8 +54,9 @@ function Signup() {
 
         {/* Full Name */}
         <div className="form-group">
-          <label>Full Name</label>
+          <label htmlFor="name">Full Name</label>
           <input
+            id="name"
             className="form-input"
             type="text"
             placeholder="Your name"
@@ -67,8 +68,9 @@ function Signup() {
 
         {/* Email */}
         <div className="form-group">
-          <label>Email</label>
+          <label htmlFor="email">Email</label>
           <input
+            id="email"
             className="form-input"
             type="email"
             placeholder="you@company.com"
@@ -79,8 +81,9 @@ function Signup() {
 
         {/* Password */}
         <div className="form-group">
-          <label>Password</label>
+          <label htmlFor="password">Password</label>
           <PasswordInput
+            id="password"
             value={form.password}
             onChange={setField("password")}
             onKeyDown={(e) => e.key === "Enter" && handleSignup()}
@@ -89,10 +92,15 @@ function Signup() {
         </div>
 
         {/* Role (hidden when using invite link) */}
-        {!invite ? (
+        {invite ? (
+          <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 16 }}>
+            Signing up via invite — role will be Member.
+          </p>
+        ) : (
           <div className="form-group">
-            <label>Role</label>
+            <label htmlFor="role">Role</label>
             <select
+              id="role"
               className="form-input"
               value={form.role}
               onChange={setField("role")}
@@ -101,10 +109,6 @@ function Signup() {
               <option value="admin">Admin</option>
             </select>
           </div>
-        ) : (
-          <p style={{ fontSize: 12, color: "var(--text2)", marginBottom: 16 }}>
-            Signing up via invite — role will be Member.
-          </p>
         )}
 
         <button className="btn-primary" onClick={handleSignup}>

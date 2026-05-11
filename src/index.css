@@ -200,7 +200,7 @@ html {
 
 .form-input {
   width: 100%;
-  padding: 12px 14px;
+  padding: 10px 14px;
   background: var(--bg3);
   border: 1px solid var(--border2);
   border-radius: var(--radius-sm);
@@ -1403,7 +1403,7 @@ html {
 
 .form-select {
   width: 100%;
-  padding: 11px 14px;
+  padding: 7px 14px 11px;
   background: var(--bg3);
   border: 1px solid var(--border2);
   border-radius: var(--radius-sm);
