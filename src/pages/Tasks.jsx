@@ -30,6 +30,9 @@ function Tasks() {
   const [editingTask, setEditingTask] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Large Scale States
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("ALL");
   const [filterPriority, setFilterPriority] = useState("ALL");
@@ -37,9 +40,10 @@ function Tasks() {
   const today = new Date().toISOString().split("T")[0];
   const showToast = (type, title, message) => setToast({ type, title, message });
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (p = page) => {
     try {
       const params = {
+        page: p,
         limit: 20,
         search: search,
         priority: filterPriority === "ALL" ? undefined : filterPriority,
@@ -54,7 +58,7 @@ function Tasks() {
     } finally {
       setLoading(false);
     }
-  }, [search, filterPriority, filterAssignee]);
+  }, [page, search, filterPriority, filterAssignee]);
 
   useEffect(() => {
     const loadMetadata = async () => {
@@ -77,8 +81,12 @@ function Tasks() {
   }, [fetchTasks]);
 
   useEffect(() => {
-    fetchTasks();
-  }, [search, filterAssignee, filterPriority, fetchTasks]);
+    // call fetchTasks asynchronously to avoid synchronous setState within effect
+    const doFetch = async () => {
+      await fetchTasks(page);
+    };
+    doFetch();
+  }, [page, search, filterAssignee, filterPriority, fetchTasks]);
 
   // Modal helpers
   const openCreate = () => { setEditingTask(null); setTaskModalOpen(true); };
@@ -131,33 +139,65 @@ function Tasks() {
     </div>
   );
 
+  const emptyStateText = search ? "No matches found." : "No tasks yet.";
+  let content;
+
+  if (loading) {
+    content = <LoadingState label="Loading tasks" />;
+  } else if (tasks.length === 0) {
+    content = <EmptyState icon="✨" text={emptyStateText} />;
+  } else {
+    content = (
+      <>
+        {GROUPS.map((g) => {
+          const gTasks = tasks.filter((t) => g.filter(t, today));
+          if (gTasks.length === 0) return null;
+          return (
+            <div key={g.label} style={{ marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: g.color, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                {g.label}
+                <span style={{ background: "var(--bg3)", color: "var(--text3)", padding: "1px 6px", borderRadius: 4, fontSize: 10 }}>
+                  {gTasks.length}
+                </span>
+              </div>
+              <div className="panel" style={{ padding: 4 }}>
+                {gTasks.map((t) => (
+                  <TaskRow key={t.id} task={t} members={users} projects={projects} currentUser={user} onEdit={openEdit} onRefresh={() => fetchTasks()} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 32, marginBottom: 40 }}>
+            <button
+              className="btn-sm btn-ghost"
+              disabled={page === 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+            >
+              Previous
+            </button>
+            <span style={{ fontSize: 13, color: 'var(--text2)' }}>
+              Page <strong>{page}</strong> of {totalPages}
+            </span>
+            <button
+              className="btn-sm btn-ghost"
+              disabled={page === totalPages}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </button>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <PageShell title="Tasks" actions={topbarActions}>
-      {loading ? (
-        <LoadingState label="Loading tasks" />
-      ) : tasks.length === 0 ? (
-        <EmptyState icon="✨" text={search ? "No matches found." : "No tasks yet."} />
-      ) : (
-        <>
-          {GROUPS.map((g) => {
-            const gTasks = tasks.filter((t) => g.filter(t, today));
-            if (gTasks.length === 0) return null;
-            return (
-              <div key={g.label} style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: g.color, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                  {g.label}
-                  <span style={{ background: "var(--bg3)", color: "var(--text3)", padding: "1px 6px", borderRadius: 4, fontSize: 10 }}>
-                    {gTasks.length}
-                  </span>
-                </div>
-                <div className="panel" style={{ padding: 4 }}>
-                  {gTasks.map((t) => (
-                    <TaskRow key={t.id} task={t} members={users} projects={projects} currentUser={user} onEdit={openEdit} onRefresh={() => fetchTasks()} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+      {content}
 
       <Modal open={taskModalOpen} onClose={closeModal} title={editingTask ? "Edit Task" : "New Task"}>
         <TaskForm

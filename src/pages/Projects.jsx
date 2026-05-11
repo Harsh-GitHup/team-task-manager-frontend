@@ -81,18 +81,24 @@ function Projects() {
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Pagination & Search States
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState("");
+
   const showToast = (type, title, message) => setToast({ type, title, message });
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (p = page) => {
     try {
-      const res = await API.get("/projects", { params: {limit: 12, search } });
+      const res = await API.get("/projects", { params: { page: p, limit: 12, search } });
       setProjects(res.data.projects || []);
+      setTotalPages(res.data.pagination.totalPages || 1);
     } catch (err) {
       showToast("error", "Could not load projects", err.response?.data?.error || "Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [page, search]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -111,8 +117,10 @@ function Projects() {
   }, []);
 
   useEffect(() => {
-    fetchProjects();
-  }, [search, fetchProjects]);
+    (async () => {
+      await fetchProjects(page);
+    })();
+  }, [page, search, fetchProjects]);
 
   const openCreate = () => { setEditingProject(null); setModalOpen(true); };
   const openEdit = (p) => { setEditingProject(p); setModalOpen(true); };
@@ -195,9 +203,16 @@ function Projects() {
 
             {/* "New Project" ghost card */}
             {isAdmin && !search && projects.length < 12 && (
-              <div
+              <button
+                type="button"
                 className="project-card"
                 onClick={openCreate}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openCreate();
+                  }
+                }}
                 style={{
                   borderStyle: "dashed",
                   display: "flex",
@@ -207,16 +222,46 @@ function Projects() {
                   minHeight: 250,
                   opacity: 0.5,
                   transition: "all 0.2s",
-                  "--project-color": "transparent"
+                  "--project-color": "transparent",
+                  cursor: "pointer",
+                  padding: 0,
+                  width: "100%"
                 }}
                 onMouseOver={(e) => (e.currentTarget.style.opacity = "1")}
                 onMouseOut={(e) => (e.currentTarget.style.opacity = "0.5")}
+                onFocus={(e) => (e.currentTarget.style.opacity = "1")}
+                onBlur={(e) => (e.currentTarget.style.opacity = "0.5")}
               >
                 <div style={{ fontSize: 32, marginBottom: 12, color: "var(--text3)" }}>+</div>
                 <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text2)" }}>New Project</div>
-              </div>
+              </button>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 40, marginBottom: 40 }}>
+              <button
+                className="btn-sm btn-ghost"
+                disabled={page === 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <span style={{ fontSize: 13, color: 'var(--text2)' }}>
+                Page <strong>{page}</strong> of {totalPages}
+              </span>
+              <button
+                className="btn-sm btn-ghost"
+                disabled={page === totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
+      )}
 
       <Modal open={modalOpen} onClose={closeModal} title={editingProject ? "Edit Project" : "New Project"}>
         <div style={{ padding: "0 24px 24px" }}>
