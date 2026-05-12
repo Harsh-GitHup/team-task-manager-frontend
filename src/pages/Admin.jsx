@@ -1,31 +1,15 @@
-import PropTypes from "prop-types";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import API from "../api";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
+import TopbarFilters from "../components/TopbarFilters";
+import FieldRow from "../components/FieldRow";
 import Toast from "../components/Toast";
 import LoadingState from "../components/LoadingState";
 import TeamForm from "../components/TeamForm";
 import MemberCard from "../components/MemberCard";
 import PanelSection from "../components/PanelSection";
-
-// ─────────────────────────────────────────────────────────
-//  Local: labelled form field row
-// ─────────────────────────────────────────────────────────
-function FieldRow({ label, children }) {
-  return (
-    <div>
-      <div style={{ fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text2)", marginBottom: 6 }}>{label}</div>
-      {children}
-    </div>
-  );
-}
-
-FieldRow.propTypes = {
-  label: PropTypes.string.isRequired,
-  children: PropTypes.node,
-};
 
 // ─────────────────────────────────────────────────────────
 //  Admin page
@@ -296,12 +280,10 @@ function Admin() {
 
             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text3)", textTransform: "uppercase", marginBottom: 12 }}>User Selection (Filters below)</div>
-              <input
-                className="form-input"
-                style={{ width: "100%", marginBottom: 12, height: 32, fontSize: 13 }}
-                placeholder="🔍 Search users by name or email..."
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
+              <TopbarFilters
+                searchValue={userSearch}
+                onSearch={(v) => setUserSearch(v)}
+                inputStyle={{ width: '100%', marginBottom: 12, height: 32, fontSize: 13 }}
               />
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

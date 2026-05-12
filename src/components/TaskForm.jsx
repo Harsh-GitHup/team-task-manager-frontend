@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useState, useRef } from "react";
 import API from "../api";
+import FieldRow from "./FieldRow";
 
 const DEFAULT_FORM = {
     title: "",
@@ -231,35 +232,19 @@ function TaskForm({
                 <div
                     style={{ borderTop: "1px solid var(--border)", paddingTop: "16px" }}
                 >
-                    <div
-                        style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            marginBottom: "10px",
-                        }}
-                    >
-                        <span
-                            style={{
-                                fontSize: "12px",
-                                fontWeight: 600,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.05em",
-                                color: "var(--text2)",
-                            }}
-                        >
-                            Attachments
-                        </span>
-                        <button
-                            type="button"
-                            className="btn-sm btn-ghost"
-                            style={{ padding: "4px 10px", fontSize: 12 }}
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploading}
-                        >
-                            {uploading ? "Uploading..." : "+ Add File"}
-                        </button>
-                    </div>
+                    <FieldRow label="Attachments">
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                type="button"
+                                className="btn-sm btn-ghost"
+                                style={{ padding: "4px 10px", fontSize: 12 }}
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploading}
+                            >
+                                {uploading ? "Uploading..." : "+ Add File"}
+                            </button>
+                        </div>
+                    </FieldRow>
                     <input
                         type="file"
                         ref={fileInputRef}

@@ -11,6 +11,9 @@ import TaskRow from "../components/TaskRow";
 import TaskForm from "../components/TaskForm";
 import StatCard from "../components/StatCard";
 import PanelSection from "../components/PanelSection";
+import Avatar from "../components/Avatar";
+import ProgressSummary from "../components/ProgressSummary";
+import Pagination from "../components/Pagination";
 
 // ─────────────────────────────────────────────────────────
 //  Dashboard
@@ -159,51 +162,24 @@ function Dashboard() {
                   const pct = pTasks.length ? Math.round((pDone / pTasks.length) * 100) : 0;
                   return (
                     <div key={p.id}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ fontSize: 18 }}>{p.emoji || "📁"}</span>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{p.title}</span>
-                        </div>
-                        <span style={{ fontSize: 12, color: "var(--text3)", fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{pDone}/{pTasks.length}</span>
-                      </div>
-                      <div className="progress-bar" style={{ height: 6, background: "rgba(255,255,255,0.05)" }}>
-                        <div className="progress-fill" style={{ width: `${pct}%`, background: p.color || "var(--accent)", height: "100%", borderRadius: 3 }} />
-                      </div>
+                      <ProgressSummary
+                        emoji={p.emoji || "📁"}
+                        title={<span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{p.title}</span>}
+                        sub={`${pDone}/${pTasks.length}`}
+                        pct={pct}
+                        color={p.color}
+                        compact
+                      />
                     </div>
                   );
                 })}
                 {totalProjectPages > 1 && (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 4 }}>
-                    <button
-                      type="button"
-                      onClick={() => setProjectPage((p) => Math.max(1, p - 1))}
-                      disabled={currentProjectPage === 1}
-                      style={{
-                        padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
-                        background: currentProjectPage === 1 ? "rgba(255,255,255,0.04)" : "rgba(124,106,255,0.08)",
-                        color: currentProjectPage === 1 ? "var(--text3)" : "var(--text)", cursor: currentProjectPage === 1 ? "not-allowed" : "pointer",
-                        fontSize: 12, fontWeight: 700
-                      }}
-                    >
-                      Prev
-                    </button>
-                    <div style={{ fontSize: 12, color: "var(--text3)", fontFamily: "'JetBrains Mono', monospace" }}>
-                      {currentProjectPage} / {totalProjectPages}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setProjectPage((p) => Math.min(totalProjectPages, p + 1))}
-                      disabled={currentProjectPage === totalProjectPages}
-                      style={{
-                        padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
-                        background: currentProjectPage === totalProjectPages ? "rgba(255,255,255,0.04)" : "rgba(124,106,255,0.08)",
-                        color: currentProjectPage === totalProjectPages ? "var(--text3)" : "var(--text)", cursor: currentProjectPage === totalProjectPages ? "not-allowed" : "pointer",
-                        fontSize: 12, fontWeight: 700
-                      }}
-                    >
-                      Next
-                    </button>
-                  </div>
+                  <Pagination
+                    page={currentProjectPage}
+                    totalPages={totalProjectPages}
+                    onPrev={() => setProjectPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setProjectPage((p) => Math.min(totalProjectPages, p + 1))}
+                  />
                 )}
               </div>
             )}
@@ -223,12 +199,7 @@ function Dashboard() {
                 {/* Pagination */}
                 {paginatedActivities.map((a) => (
                   <div key={a.id} className="activity-item" style={{ gap: 14 }}>
-                    <div className="activity-avatar" style={{
-                      width: 32, height: 32, fontSize: 11,
-                      background: "rgba(124,106,255,0.15)", color: "var(--accent2)"
-                    }}>
-                      {(a.user_name || "?").slice(0, 2).toUpperCase()}
-                    </div>
+                    <Avatar name={a.user_name} className="activity-avatar" size={32} />
                     <div style={{ flex: 1 }}>
                       <div className="activity-text" style={{ fontSize: 13, lineHeight: 1.5 }} dangerouslySetInnerHTML={{ __html: (a.action || "").replaceAll(/\*\*(.*?)\*\*/g, '<strong style="color:var(--text)">$1</strong>') }} />
                       <div className="activity-time" style={{ marginTop: 4, fontSize: 11, opacity: 0.6 }}>
@@ -238,37 +209,12 @@ function Dashboard() {
                   </div>
                 ))}
                 {totalActivityPages > 1 && (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 4 }}>
-                    <button
-                      type="button"
-                      onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
-                      disabled={currentActivityPage === 1}
-                      style={{
-                        padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
-                        background: currentActivityPage === 1 ? "rgba(255,255,255,0.04)" : "rgba(124,106,255,0.08)",
-                        color: currentActivityPage === 1 ? "var(--text3)" : "var(--text)", cursor: currentActivityPage === 1 ? "not-allowed" : "pointer",
-                        fontSize: 12, fontWeight: 700
-                      }}
-                    >
-                      Prev
-                    </button>
-                    <div style={{ fontSize: 12, color: "var(--text3)", fontFamily: "'JetBrains Mono', monospace" }}>
-                      {currentActivityPage} / {totalActivityPages}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActivityPage((p) => Math.min(totalActivityPages, p + 1))}
-                      disabled={currentActivityPage === totalActivityPages}
-                      style={{
-                        padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)",
-                        background: currentActivityPage === totalActivityPages ? "rgba(255,255,255,0.04)" : "rgba(124,106,255,0.08)",
-                        color: currentActivityPage === totalActivityPages ? "var(--text3)" : "var(--text)", cursor: currentActivityPage === totalActivityPages ? "not-allowed" : "pointer",
-                        fontSize: 12, fontWeight: 700
-                      }}
-                    >
-                      Next
-                    </button>
-                  </div>
+                  <Pagination
+                    page={currentActivityPage}
+                    totalPages={totalActivityPages}
+                    onPrev={() => setActivityPage((p) => Math.max(1, p - 1))}
+                    onNext={() => setActivityPage((p) => Math.min(totalActivityPages, p + 1))}
+                  />
                 )}
               </div>
             )}
@@ -281,9 +227,7 @@ function Dashboard() {
                 const mTasks = tasks.filter((t) => String(t.assigned_to) === String(m.id) && t.status !== "Done").length;
                 return (
                   <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0" }}>
-                    <div className="activity-avatar" style={{ width: 34, height: 34, fontSize: 12, background: "rgba(124,106,255,0.1)", color: "var(--accent)" }}>
-                      {m.name.slice(0, 2).toUpperCase()}
-                    </div>
+                    <Avatar name={m.name} className="activity-avatar" size={34} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{m.name}</div>
                       <div style={{ fontSize: 11, color: "var(--text3)" }}>{mTasks} active task{mTasks === 1 ? "" : "s"}</div>

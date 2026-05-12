@@ -5,6 +5,7 @@ import { useNotifications } from "../context/NotificationContext";
 import PageShell from "../components/PageShell";
 import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
+import Avatar from "../components/Avatar";
 
 function Chat() {
   const { user } = useContext(AuthContext);
@@ -120,12 +121,7 @@ function Chat() {
                   }
                 }}
               >
-                <div
-                  className="member-avatar"
-                  style={{ width: 36, height: 36, background: "rgba(124,106,255,0.15)", color: "var(--accent2)", fontSize: 14 }}
-                >
-                  {t.name.slice(0, 2).toUpperCase()}
-                </div>
+                <Avatar name={t.name} className="member-avatar" size={36} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 600 }}>{t.name}</div>
                   <div style={{ fontSize: 11, color: "var(--text3)" }}>{t.admin_name || 'Team Chat'}</div>

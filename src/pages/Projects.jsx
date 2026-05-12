@@ -10,6 +10,7 @@ import LoadingState from "../components/LoadingState";
 import ProjectForm from "../components/ProjectForm";
 import ProjectCard from "../components/ProjectCard";
 import Pagination from "../components/Pagination";
+import TopbarFilters from "../components/TopbarFilters";
 
 // ─────────────────────────────────────────────────────────
 //  Main page
@@ -103,16 +104,13 @@ function Projects() {
   const isAdmin = user?.role === "admin";
 
   const topbarActions = (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <input
-        className="form-input"
-        style={{ width: 180, height: 32, fontSize: 13 }}
-        placeholder="Search projects..."
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-      />
-      {isAdmin && <button className="btn-sm btn-accent" onClick={openCreate}>+ New Project</button>}
-    </div>
+    <TopbarFilters
+      searchValue={search}
+      onSearch={(v) => { setSearch(v); setPage(1); }}
+      isAdmin={isAdmin}
+      onCreate={openCreate}
+      style={{ gap: 10 }}
+    />
   );
 
   return (

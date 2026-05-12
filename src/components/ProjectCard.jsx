@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import IconActionButtons from "./IconActionButtons";
+import ProgressSummary from "./ProgressSummary";
 
 export default function ProjectCard({ project, taskCount, done, memberCount, onEdit, onDelete, onClick }) {
     const pct = taskCount ? Math.round((done / taskCount) * 100) : 0;
@@ -30,13 +31,14 @@ export default function ProjectCard({ project, taskCount, done, memberCount, onE
             <p className="project-desc">{project.description || "No description provided for this project."}</p>
 
             <div style={{ marginBottom: 20 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--text2)", marginBottom: 8, fontWeight: 500 }}>
-                    <span>Progress</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{pct}%</span>
-                </div>
-                <div className="progress-bar" style={{ height: 8 }}>
-                    <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
-                </div>
+                <ProgressSummary
+                    emoji={project.emoji}
+                    title={<span style={{ fontSize: 13, fontWeight: 700 }}>{project.title}</span>}
+                    sub={`${done}/${taskCount}`}
+                    pct={pct}
+                    color={color}
+                    compact
+                />
             </div>
 
             <div className="project-stats">

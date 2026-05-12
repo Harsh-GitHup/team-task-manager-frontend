@@ -12,6 +12,7 @@ import TaskRow from "../components/TaskRow";
 import Pagination from "../components/Pagination";
 import SectionHeader from "../components/SectionHeader";
 import PanelSection from "../components/PanelSection";
+import TopbarFilters from "../components/TopbarFilters";
 
 // Group definitions for the task list
 const GROUPS = [
@@ -119,27 +120,17 @@ function Tasks() {
   const isAdmin = user?.role === "admin";
 
   const topbarActions = (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-      <input
-        className="form-input"
-        style={{ width: 160, height: 32, fontSize: 13 }}
-        placeholder="Search tasks..."
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-      />
-      <select className="form-select" style={{ width: 130, height: 34 }} value={filterAssignee} onChange={(e) => { setFilterAssignee(e.target.value); setPage(1); }}>
-        <option value="ALL">All Assignees</option>
-        <option value="UNASSIGNED">Unassigned</option>
-        {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-      </select>
-      <select className="form-select" style={{ width: 130, height: 34 }} value={filterPriority} onChange={(e) => { setFilterPriority(e.target.value); setPage(1); }}>
-        <option value="ALL">All Priorities</option>
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
-      </select>
-      {isAdmin && <button className="btn-sm btn-accent" onClick={openCreate}>+ New Task</button>}
-    </div>
+    <TopbarFilters
+      searchValue={search}
+      onSearch={(v) => { setSearch(v); setPage(1); }}
+      assigneeOptions={[{ value: 'ALL', label: 'All Assignees' }, { value: 'UNASSIGNED', label: 'Unassigned' }, ...users.map((u) => ({ value: u.id, label: u.name }))]}
+      assigneeValue={filterAssignee}
+      onAssigneeChange={(v) => { setFilterAssignee(v); setPage(1); }}
+      priorityValue={filterPriority}
+      onPriorityChange={(v) => { setFilterPriority(v); setPage(1); }}
+      isAdmin={isAdmin}
+      onCreate={openCreate}
+    />
   );
 
   const emptyStateText = search ? "No matches found." : "No tasks yet.";

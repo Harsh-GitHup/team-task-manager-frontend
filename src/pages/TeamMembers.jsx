@@ -8,6 +8,7 @@ import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
 import MemberCard from "../components/MemberCard";
+import ProgressSummary from "../components/ProgressSummary";
 
 // ─────────────────────────────────────────────────────────
 //  Role-edit modal (extracted to keep TeamMembers readable)
@@ -182,21 +183,12 @@ function TeamMembers() {
                 onEdit={openEdit}
                 onDelete={deleteMember}
                 extra={
-                  /* Per-member task progress */
-                  <div style={{ textAlign: "right", marginRight: 12, minWidth: 120 }}>
-                    <div style={{ fontSize: 12, color: "var(--text2)" }}>
-                      {member.taskCount} tasks · {member.completed} done
-                    </div>
-                    <div className="progress-bar" style={{ marginTop: 4 }}>
-                      <div
-                        className="progress-fill"
-                        style={{
-                          width: `${member.percentage}%`,
-                          background: "linear-gradient(90deg, var(--accent), #9b59ff)",
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <ProgressSummary
+                    pct={member.percentage}
+                    sub={`${member.taskCount} tasks · ${member.completed} done`}
+                    compact
+                    rightAligned
+                  />
                 }
               />
             ))}

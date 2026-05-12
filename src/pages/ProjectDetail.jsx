@@ -10,6 +10,7 @@ import ProjectForm from "../components/ProjectForm";
 import TaskForm from "../components/TaskForm";
 import TaskListItem from "../components/TaskListItem";
 import KanbanCard from "../components/KanbanCard";
+import ProgressSummary from "../components/ProgressSummary";
 
 // Kanban column definitions
 const STATUS_COLS = [
@@ -204,15 +205,14 @@ function ProjectDetail() {
   return (
     <PageShell title={topbarTitle} actions={topbarActions}>
 
-      {/* ── Progress bar ── */}
+      {/* ── Progress summary ── */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--text2)", marginBottom: 5 }}>
-          <span>{done} of {tasks.length} tasks completed</span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{pct}%</span>
-        </div>
-        <div className="progress-bar" style={{ height: 8 }}>
-          <div className="progress-fill" style={{ width: `${pct}%`, background: "linear-gradient(90deg, var(--accent), #9b59ff)" }} />
-        </div>
+        <ProgressSummary
+          title={`${done} of ${tasks.length} tasks completed`}
+          pct={pct}
+          color={project?.color}
+          compact
+        />
       </div>
 
       {/* ── View tabs ── */}

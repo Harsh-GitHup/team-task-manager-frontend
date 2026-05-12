@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import IconActionButtons from "./IconActionButtons";
+import Avatar from "./Avatar";
 
 /**
  * MemberCard — a single row in any member list.
@@ -20,15 +21,7 @@ export default function MemberCard({
 }) {
   return (
     <div className="member-row">
-      <div
-        className="member-avatar"
-        style={{
-          background: "rgba(124,106,255,0.15)",
-          color: "var(--accent2)",
-        }}
-      >
-        {(member.name || "?").slice(0, 2).toUpperCase()}
-      </div>
+      <Avatar name={member.name} className="member-avatar" />
 
       <div className="member-info">
         <div className="member-name">{member.name}</div>
