@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useEffect, useState, useContext, useCallback } from "react";
 import { Link } from "react-router-dom";
 import io from "socket.io-client";
@@ -10,26 +9,7 @@ import Toast from "../components/Toast";
 import EmptyState from "../components/EmptyState";
 import TaskRow from "../components/TaskRow";
 import TaskForm from "../components/TaskForm";
-
-// ─────────────────────────────────────────────────────────
-//  Small stat card (local — only used here)
-// ─────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, variant }) {
-  return (
-    <div className={`stat-card ${variant}`}>
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-      <div className="stat-sub">{sub}</div>
-    </div>
-  );
-}
-
-StatCard.propTypes = {
-  label: PropTypes.string.isRequired,
-  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-  sub: PropTypes.string,
-  variant: PropTypes.string,
-};
+import StatCard from "../components/StatCard";
 
 // ─────────────────────────────────────────────────────────
 //  Dashboard
