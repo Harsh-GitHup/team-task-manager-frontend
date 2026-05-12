@@ -10,6 +10,7 @@ import EmptyState from "../components/EmptyState";
 import TaskRow from "../components/TaskRow";
 import TaskForm from "../components/TaskForm";
 import StatCard from "../components/StatCard";
+import PanelSection from "../components/PanelSection";
 
 // ─────────────────────────────────────────────────────────
 //  Dashboard
@@ -132,8 +133,7 @@ function Dashboard() {
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Active tasks */}
-          <div className="panel" style={{ padding: 24 }}>
-            <div className="section-title" style={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>ACTIVE TASKS</div>
+          <PanelSection title="ACTIVE TASKS" style={{ padding: 24 }} titleStyle={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>
             {activeTasks.length === 0 ? (
               <EmptyState icon="🎉" text="All caught up!" compact />
             ) : (
@@ -143,11 +143,10 @@ function Dashboard() {
                 ))}
               </div>
             )}
-          </div>
+          </PanelSection>
 
           {/* Projects overview */}
-          <div className="panel" style={{ padding: 24 }}>
-            <div className="section-title" style={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>PROJECTS OVERVIEW</div>
+          <PanelSection title="PROJECTS OVERVIEW" style={{ padding: 24 }} titleStyle={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>
             {projects.length === 0 ? (
               <EmptyState icon="📂" text="No projects yet." compact />
             ) : (
@@ -208,15 +207,14 @@ function Dashboard() {
                 )}
               </div>
             )}
-          </div>
+          </PanelSection>
         </div>
 
         {/* Right column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Activity feed */}
-          <div className="panel" style={{ padding: 24 }}>
-            <div className="section-title" style={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>ACTIVITY FEED</div>
+          <PanelSection title="ACTIVITY FEED" style={{ padding: 24 }} titleStyle={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>
             {activities.length === 0 ? (
               <div style={{ fontSize: 13, color: "var(--text2)", textAlign: "center", padding: 10 }}>No recent activity</div>
             ) : (
@@ -274,11 +272,10 @@ function Dashboard() {
                 )}
               </div>
             )}
-          </div>
+          </PanelSection>
 
           {/* Team overview */}
-          <div className="panel" style={{ padding: 24 }}>
-            <div className="section-title" style={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>TEAM</div>
+          <PanelSection title="TEAM" style={{ padding: 24 }} titleStyle={{ marginBottom: 24, fontSize: 14, letterSpacing: "0.5px" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {users.slice(0, 5).map((m) => {
                 const mTasks = tasks.filter((t) => String(t.assigned_to) === String(m.id) && t.status !== "Done").length;
@@ -318,7 +315,7 @@ function Dashboard() {
                 Open Admin Center
               </Link>
             )}
-          </div>
+          </PanelSection>
         </div>
       </div>
 

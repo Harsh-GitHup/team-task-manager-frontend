@@ -8,24 +8,7 @@ import Toast from "../components/Toast";
 import LoadingState from "../components/LoadingState";
 import TeamForm from "../components/TeamForm";
 import MemberCard from "../components/MemberCard";
-
-// ─────────────────────────────────────────────────────────
-//  Local: section-panel wrapper
-// ─────────────────────────────────────────────────────────
-function SectionPanel({ title, children, style }) {
-  return (
-    <div className="panel" style={style}>
-      {title && <div className="section-title">{title}</div>}
-      {children}
-    </div>
-  );
-}
-
-SectionPanel.propTypes = {
-  title: PropTypes.string,
-  children: PropTypes.node,
-  style: PropTypes.object,
-};
+import PanelSection from "../components/PanelSection";
 
 // ─────────────────────────────────────────────────────────
 //  Local: labelled form field row
@@ -267,7 +250,7 @@ function Admin() {
         </div>
 
         {/* ── Teams list ── */}
-        <SectionPanel title="All Teams">
+        <PanelSection title="All Teams">
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
             {teams.length === 0 ? (
               <EmptyState icon="🧩" text="No teams yet. Create one below." compact />
@@ -286,13 +269,13 @@ function Admin() {
               ))
             )}
           </div>
-        </SectionPanel>
+        </PanelSection>
 
         {/* ── Two-column ── */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
 
           {/* Left: Team management */}
-          <SectionPanel title="Team Management" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <PanelSection title="Team Management" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
             <FieldRow label="Create New Team">
               <div style={{ display: "flex", gap: 8 }}>
@@ -362,13 +345,13 @@ function Admin() {
                 )}
               </div>
             </div>
-          </SectionPanel>
+          </PanelSection>
 
           {/* Right: Projects + Tasks */}
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
             {/* Assign Projects */}
-            <SectionPanel title="Assign Projects">
+            <PanelSection title="Assign Projects">
               <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 14 }}>Link projects to the selected team.</p>
               <div className="form-group">
                 <label htmlFor="project-title">Project Title</label>
@@ -395,10 +378,10 @@ function Admin() {
                   ))}
                 </div>
               )}
-            </SectionPanel>
+            </PanelSection>
 
             {/* Assign Tasks */}
-            <SectionPanel title="Assign Tasks">
+            <PanelSection title="Assign Tasks">
               <p style={{ fontSize: 13, color: "var(--text2)", marginBottom: 14 }}>Quickly create and assign tasks.</p>
               <div className="form-group">
                 <label htmlFor="task-title">Task Title</label>
@@ -423,7 +406,7 @@ function Admin() {
               <button className="btn-sm btn-accent" style={{ width: "100%" }} onClick={createTask}>
                 + Create Task
               </button>
-            </SectionPanel>
+            </PanelSection>
           </div>
         </div>
       </div>

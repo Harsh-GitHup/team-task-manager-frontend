@@ -10,6 +10,8 @@ import LoadingState from "../components/LoadingState";
 import TaskForm from "../components/TaskForm";
 import TaskRow from "../components/TaskRow";
 import Pagination from "../components/Pagination";
+import SectionHeader from "../components/SectionHeader";
+import PanelSection from "../components/PanelSection";
 
 // Group definitions for the task list
 const GROUPS = [
@@ -155,17 +157,23 @@ function Tasks() {
           if (gTasks.length === 0) return null;
           return (
             <div key={g.label} style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: g.color, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                {g.label}
-                <span style={{ background: "var(--bg3)", color: "var(--text3)", padding: "1px 6px", borderRadius: 4, fontSize: 10 }}>
-                  {gTasks.length}
-                </span>
-              </div>
-              <div className="panel" style={{ padding: 4 }}>
+              <SectionHeader
+                title={g.label}
+                count={gTasks.length}
+                color={g.color}
+                style={{
+                  marginBottom: 10,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                }}
+              />
+              <PanelSection style={{ padding: 4 }}>
                 {gTasks.map((t) => (
                   <TaskRow key={t.id} task={t} members={users} projects={projects} currentUser={user} onEdit={openEdit} onRefresh={() => fetchTasks()} />
                 ))}
-              </div>
+              </PanelSection>
             </div>
           );
         })}
