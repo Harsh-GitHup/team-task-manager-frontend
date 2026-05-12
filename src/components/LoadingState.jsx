@@ -1,3 +1,5 @@
+import PropTypes from "prop-types";
+
 function LoadingState({ label = "Loading" }) {
     return (
         <div className="loading-shell">
@@ -8,5 +10,9 @@ function LoadingState({ label = "Loading" }) {
         </div>
     );
 }
+
+LoadingState.propTypes = {
+    label: PropTypes.string,
+};
 
 export default LoadingState;

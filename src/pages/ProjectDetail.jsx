@@ -8,6 +8,7 @@ import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
 import ProjectForm from "../components/ProjectForm";
 import TaskForm from "../components/TaskForm";
+import PropTypes from "prop-types";
 
 // Kanban column definitions
 const STATUS_COLS = [
@@ -67,6 +68,18 @@ function TaskListItem({ task, canModify, onEdit, onDelete }) {
   );
 }
 
+TaskListItem.propTypes = {
+  task: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string.isRequired,
+    status: PropTypes.string.isRequired,
+    priority: PropTypes.string,
+  }).isRequired,
+  canModify: PropTypes.bool.isRequired,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+};
+
 // ─────────────────────────────────────────────────────────
 //  Local: kanban card
 // ─────────────────────────────────────────────────────────
@@ -95,6 +108,18 @@ function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
     </button>
   );
 }
+
+KanbanCard.propTypes = {
+  task: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string.isRequired,
+    priority: PropTypes.string,
+  }).isRequired,
+  canModify: PropTypes.bool.isRequired,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+  onDragStart: PropTypes.func.isRequired,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Main page

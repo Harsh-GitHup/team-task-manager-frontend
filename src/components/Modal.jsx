@@ -1,3 +1,5 @@
+import PropTypes from "prop-types";
+
 /**
  * Modal — reusable overlay + card.
  *
@@ -28,3 +30,11 @@ export default function Modal({ open, onClose, title, children, width }) {
     </div>
   );
 }
+
+Modal.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  title: PropTypes.string,
+  children: PropTypes.node,
+  width: PropTypes.string,
+};

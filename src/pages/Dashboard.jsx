@@ -1,12 +1,13 @@
-import { useState, useEffect, useContext, useCallback } from "react";
+import PropTypes from "prop-types";
+import { useEffect, useState, useContext, useCallback } from "react";
 import { Link } from "react-router-dom";
+import io from "socket.io-client";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
-import { io } from "socket.io-client";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
-import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
+import EmptyState from "../components/EmptyState";
 import TaskRow from "../components/TaskRow";
 import TaskForm from "../components/TaskForm";
 
@@ -22,6 +23,13 @@ function StatCard({ label, value, sub, variant }) {
     </div>
   );
 }
+
+StatCard.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  sub: PropTypes.string,
+  variant: PropTypes.string,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Dashboard

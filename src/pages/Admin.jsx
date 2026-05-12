@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import PropTypes from "prop-types";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import API from "../api";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
-import MemberCard from "../components/MemberCard";
 import Toast from "../components/Toast";
 import LoadingState from "../components/LoadingState";
 import TeamForm from "../components/TeamForm";
+import MemberCard from "../components/MemberCard";
 
 // ─────────────────────────────────────────────────────────
 //  Local: section-panel wrapper
@@ -20,6 +21,12 @@ function SectionPanel({ title, children, style }) {
   );
 }
 
+SectionPanel.propTypes = {
+  title: PropTypes.string,
+  children: PropTypes.node,
+  style: PropTypes.object,
+};
+
 // ─────────────────────────────────────────────────────────
 //  Local: labelled form field row
 // ─────────────────────────────────────────────────────────
@@ -31,6 +38,11 @@ function FieldRow({ label, children }) {
     </div>
   );
 }
+
+FieldRow.propTypes = {
+  label: PropTypes.string.isRequired,
+  children: PropTypes.node,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Admin page

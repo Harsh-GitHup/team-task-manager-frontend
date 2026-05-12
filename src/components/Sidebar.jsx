@@ -11,7 +11,10 @@ function Sidebar() {
   const { isSidebarOpen } = useUI();
 
   // Total chat messages across all teams
-  const totalChatNotifs = Object.values(chatNotifications).reduce((a, b) => a + b, 0);
+  const totalChatNotifs = Object.values(chatNotifications).reduce(
+    (a, b) => a + b,
+    0,
+  );
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [showAllProjects, setShowAllProjects] = useState(false);
@@ -48,13 +51,15 @@ function Sidebar() {
   }, []);
 
   return (
-    <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
+    <aside className={`sidebar ${isSidebarOpen ? "open" : ""}`}>
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">⚡</div>
           <div>
             <div className="sidebar-logo-text">TaskHub</div>
-            <div style={{ fontSize: 11, color: "var(--text3)" }}>Operate your workspace</div>
+            <div style={{ fontSize: 11, color: "var(--text3)" }}>
+              Operate your workspace
+            </div>
           </div>
         </div>
       </div>
@@ -77,7 +82,10 @@ function Sidebar() {
           </NavLink>
         ))}
         {user?.role === "admin" && (
-          <NavLink to="/admin" className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
+          <NavLink
+            to="/admin"
+            className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+          >
             <span className="nav-item-icon">🛠️</span>
             <span>Admin Center</span>
           </NavLink>
@@ -87,12 +95,15 @@ function Sidebar() {
       {/* Projects Section */}
       <div className="sidebar-section sidebar-projects">
         <div className="sidebar-section-label">Projects</div>
-        <div style={{ maxHeight: 'calc(100vh - 420px)', overflowY: 'auto' }}>
+        <div style={{ maxHeight: "calc(100vh - 420px)", overflowY: "auto" }}>
           {(() => {
             if (loadingProjects) {
               return (
                 <div className="loading-shell" style={{ minHeight: 88 }}>
-                  <div className="loading-card" style={{ width: "100%", justifyContent: "center" }}>
+                  <div
+                    className="loading-card"
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
                     <div className="loader" />
                     <span>Loading...</span>
                   </div>
@@ -101,28 +112,53 @@ function Sidebar() {
             }
 
             return !Array.isArray(projects) || projects.length === 0 ? (
-              <div style={{ padding: "8px 10px", color: "var(--text3)", fontSize: 13 }}>No projects yet</div>
+              <div
+                style={{
+                  padding: "8px 10px",
+                  color: "var(--text3)",
+                  fontSize: 13,
+                }}
+              >
+                No projects yet
+              </div>
             ) : (
               <div>
-                {projects.slice(0, showAllProjects ? projects.length : 4).map((project) => (
-                  <NavLink
-                    key={project.id}
-                    to={`/projects/${project.id}`}
-                    className="project-item"
-                  >
-                    <span className="project-dot" style={{ background: project.color || "var(--accent)" }} />
-                    <span className="truncate">{project.title}</span>
-                  </NavLink>
-                ))}
+                {projects
+                  .slice(0, showAllProjects ? projects.length : 4)
+                  .map((project) => (
+                    <NavLink
+                      key={project.id}
+                      to={`/projects/${project.id}`}
+                      className="project-item"
+                    >
+                      <span
+                        className="project-dot"
+                        style={{ background: project.color || "var(--accent)" }}
+                      />
+                      <span className="truncate">{project.title}</span>
+                    </NavLink>
+                  ))}
                 {projects.length > 4 && (
                   <button
                     type="button"
                     className="project-item"
                     onClick={() => setShowAllProjects((prev) => !prev)}
-                    style={{ width: "100%", textAlign: "left", background: "transparent", border: "none" }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      background: "transparent",
+                      border: "none",
+                    }}
                   >
-                    <span className="project-dot" style={{ background: "var(--text3)" }} />
-                    <span>{showAllProjects ? "See less" : `See more (${projects.length - 4})`}</span>
+                    <span
+                      className="project-dot"
+                      style={{ background: "var(--text3)" }}
+                    />
+                    <span>
+                      {showAllProjects
+                        ? "See less"
+                        : `See more (${projects.length - 4})`}
+                    </span>
                   </button>
                 )}
               </div>
@@ -133,16 +169,22 @@ function Sidebar() {
 
       <div className="sidebar-footer">
         <div className="user-card">
-          <div className="user-avatar" style={{ background: "rgba(124,106,255,0.18)", color: "var(--accent2)" }}>
+          <div
+            className="user-avatar"
+            style={{
+              background: "rgba(124,106,255,0.18)",
+              color: "var(--accent2)",
+            }}
+          >
             {user?.name?.slice(0, 2)?.toUpperCase()}
           </div>
           <div className="user-info">
             <div className="user-name">{user?.name}</div>
             <div className="user-role">
               {(() => {
-                if (user?.role === 'admin') return '⚡ Admin';
-                if (user?.role === 'head') return '🔰 Head';
-                return '👤 Member';
+                if (user?.role === "admin") return "⚡ Admin";
+                if (user?.role === "head") return "🔰 Head";
+                return "👤 Member";
               })()}
             </div>
           </div>

@@ -1,3 +1,5 @@
+import PropTypes from "prop-types";
+
 /**
  * EmptyState — standardized empty / zero-data placeholder.
  *
@@ -6,7 +8,11 @@
  *  text    {string}  Description text
  *  compact {boolean} Use smaller vertical padding
  */
-export default function EmptyState({ icon = "📭", text = "Nothing here yet.", compact = false }) {
+export default function EmptyState({
+  icon = "📭",
+  text = "Nothing here yet.",
+  compact = false,
+}) {
   return (
     <div className="empty" style={compact ? { padding: "20px" } : undefined}>
       <div className="empty-icon">{icon}</div>
@@ -14,3 +20,9 @@ export default function EmptyState({ icon = "📭", text = "Nothing here yet.", 
     </div>
   );
 }
+
+EmptyState.propTypes = {
+  icon: PropTypes.string,
+  text: PropTypes.string,
+  compact: PropTypes.bool,
+};

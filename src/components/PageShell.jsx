@@ -1,7 +1,8 @@
-import { useContext, useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNotifications } from "../context/NotificationContext";
 import { useUI } from "../context/UIContext";
 import { Link } from "react-router-dom";
+import PropTypes from "prop-types";
 
 /**
  * PageShell — wraps every authenticated page with the standard
@@ -32,12 +33,15 @@ export default function PageShell({ title, actions, children, noPad = false }) {
   return (
     <div className="main animate-fade-in">
       <div className="topbar">
-        <button className="mobile-toggle" onClick={toggleSidebar} aria-label="Toggle Menu">
+        <button
+          className="mobile-toggle"
+          onClick={toggleSidebar}
+          aria-label="Toggle Menu"
+        >
           ☰
         </button>
         <div className="topbar-title">{title}</div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          
           {/* Global Notification Icon */}
           <div style={{ position: "relative" }} ref={notifRef}>
             <div 
@@ -60,9 +64,15 @@ export default function PageShell({ title, actions, children, noPad = false }) {
             {showNotifs && (
               <div className="notification-dropdown">
                 <div className="notif-header">
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
                     <span>Notifications</span>
-                    {notifications.length > 0 && <span className="notif-count">{notifications.length}</span>}
+                    {notifications.length > 0 && (
+                      <span className="notif-count">
+                        {notifications.length}
+                      </span>
+                    )}
                   </div>
                   {notifications.length > 0 && (
                     <button className="clear-all-btn" onClick={clearAll}>
@@ -74,17 +84,25 @@ export default function PageShell({ title, actions, children, noPad = false }) {
                   {notifications.length === 0 ? (
                     <div className="notif-empty">
                       <div className="notif-empty-icon">🔔</div>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>No new notifications</div>
-                      <div style={{ fontSize: 12, opacity: 0.7 }}>We'll notify you about team activity and messages.</div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        No new notifications
+                      </div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>
+                        We'll notify you about team activity and messages.
+                      </div>
                     </div>
                   ) : (
                     notifications.map((n) => (
-                      <Link 
-                        to={n.link || "#"} 
-                        key={n.id} 
-                        className="notif-item" 
+                      <Link
+                        to={n.link || "#"}
+                        key={n.id}
+                        className="notif-item"
                         onClick={() => setShowNotifs(false)}
-                        style={{ display: "block", textDecoration: "none", color: "inherit" }}
+                        style={{
+                          display: "block",
+                          textDecoration: "none",
+                          color: "inherit",
+                        }}
                       >
                         <div style={{ display: "flex", gap: 10 }}>
                           <div className={`notif-icon-circle ${n.type}`}>
@@ -92,9 +110,14 @@ export default function PageShell({ title, actions, children, noPad = false }) {
                           </div>
                           <div style={{ flex: 1 }}>
                             <div className="notif-item-title">{n.title}</div>
-                            <div className="notif-item-content">{n.content}</div>
+                            <div className="notif-item-content">
+                              {n.content}
+                            </div>
                             <div className="notif-item-time">
-                              {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {new Date(n.created_at).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                             </div>
                           </div>
                         </div>
@@ -106,7 +129,11 @@ export default function PageShell({ title, actions, children, noPad = false }) {
             )}
           </div>
 
-          {actions && <div style={{ display: "flex", alignItems: "center", gap: 10 }}>{actions}</div>}
+          {actions && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {actions}
+            </div>
+          )}
         </div>
       </div>
       <div className="content" style={noPad ? { padding: 0 } : undefined}>
@@ -115,3 +142,10 @@ export default function PageShell({ title, actions, children, noPad = false }) {
     </div>
   );
 }
+
+PageShell.propTypes = {
+  title: PropTypes.oneOfType([PropTypes.string, PropTypes.node]),
+  actions: PropTypes.node,
+  children: PropTypes.node,
+  noPad: PropTypes.bool,
+};

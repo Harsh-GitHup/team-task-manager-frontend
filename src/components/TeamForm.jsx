@@ -1,11 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import PropTypes from "prop-types";
 
 function TeamForm({ initialData, onSubmit, onCancel, submitLabel = "Save Team" }) {
-    const [name, setName] = useState("");
-
-    useEffect(() => {
-        setName(initialData?.name || "");
-    }, [initialData]);
+    const [name, setName] = useState(initialData?.name || "");
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -15,8 +12,9 @@ function TeamForm({ initialData, onSubmit, onCancel, submitLabel = "Save Team" }
     return (
         <form onSubmit={handleSubmit}>
             <div className="form-group">
-                <label>Team Name</label>
+                <label htmlFor="team-name">Team Name</label>
                 <input
+                    id="team-name"
                     className="form-input"
                     placeholder="Team name"
                     value={name}
@@ -35,5 +33,14 @@ function TeamForm({ initialData, onSubmit, onCancel, submitLabel = "Save Team" }
         </form>
     );
 }
+
+TeamForm.propTypes = {
+    initialData: PropTypes.shape({
+        name: PropTypes.string,
+    }),
+    onSubmit: PropTypes.func,
+    onCancel: PropTypes.func,
+    submitLabel: PropTypes.string,
+};
 
 export default TeamForm;

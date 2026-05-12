@@ -1027,6 +1027,7 @@ html {
   color: var(--text2);
   margin-bottom: 2px;
   text-decoration: none;
+  position: relative;
 }
 
 .nav-item:hover {
@@ -1632,10 +1633,6 @@ html {
   text-align: center;
   border: 2px solid var(--bg2);
   box-shadow: 0 2px 8px rgba(255, 107, 107, 0.4);
-}
-
-.nav-item {
-  position: relative;
 }
 
 .sidebar-badge {

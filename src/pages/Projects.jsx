@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import { useState, useEffect, useContext, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
@@ -65,6 +66,22 @@ function ProjectCard({ project, taskCount, done, memberCount, onEdit, onDelete, 
     </button>
   );
 }
+
+ProjectCard.propTypes = {
+  project: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string.isRequired,
+    description: PropTypes.string,
+    emoji: PropTypes.string,
+    color: PropTypes.string,
+  }).isRequired,
+  taskCount: PropTypes.number.isRequired,
+  done: PropTypes.number.isRequired,
+  memberCount: PropTypes.number,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+  onClick: PropTypes.func,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Main page
