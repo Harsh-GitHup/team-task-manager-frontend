@@ -1,18 +1,9 @@
 import PropTypes from "prop-types";
+import PriorityTag from "./PriorityTag";
+import StatusBadge from "./StatusBadge";
 
 export default function TaskListItem({ task, canModify, onEdit, onDelete }) {
     const isDone = task.status === "Done";
-    const isInProgress = task.status === "In Progress";
-    let statusBg = "rgba(255,255,255,0.05)";
-    let statusColor = "var(--text3)";
-
-    if (isDone) {
-        statusBg = "rgba(45,212,160,0.12)";
-        statusColor = "var(--green)";
-    } else if (isInProgress) {
-        statusBg = "rgba(124,106,255,0.15)";
-        statusColor = "var(--accent2)";
-    }
     return (
         <button
             className="task-item"
@@ -29,12 +20,8 @@ export default function TaskListItem({ task, canModify, onEdit, onDelete }) {
                     {task.title}
                 </div>
                 <div className="task-meta">
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, textTransform: "uppercase", background: statusBg, color: statusColor }}>
-                        {task.status}
-                    </span>
-                    {task.priority && (
-                        <span className={`tag tag-${task.priority.toLowerCase()}`}>{task.priority.toUpperCase()}</span>
-                    )}
+                    <StatusBadge status={task.status} />
+                    <PriorityTag priority={task.priority} />
                 </div>
             </div>
 

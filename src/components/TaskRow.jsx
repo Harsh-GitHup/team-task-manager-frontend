@@ -1,5 +1,7 @@
 import API from "../api";
 import PropTypes from "prop-types";
+import PriorityTag from "./PriorityTag";
+import StatusTag from "./StatusTag";
 
 export default function TaskRow({
   task,
@@ -40,10 +42,6 @@ export default function TaskRow({
     e.stopPropagation();
     onEdit(task);
   };
-
-  // Convert status/priority to lowercase no-spaces for CSS class matching
-  const statusClass = (task.status || "").replaceAll(/\s+/g, "").toLowerCase();
-  const priorityClass = (task.priority || "").toLowerCase();
 
   return (
     <button
@@ -94,22 +92,8 @@ export default function TaskRow({
           {task.title}
         </div>
         <div className="task-meta" style={{ gap: 12 }}>
-          {task.priority && (
-            <span
-              className={`tag tag-${priorityClass}`}
-              style={{ fontSize: 9, fontWeight: 800, padding: "2px 8px" }}
-            >
-              {task.priority.toUpperCase()}
-            </span>
-          )}
-          {task.status && (
-            <span
-              className={`tag tag-${statusClass}`}
-              style={{ fontSize: 9, fontWeight: 800, padding: "2px 8px" }}
-            >
-              {task.status.toUpperCase()}
-            </span>
-          )}
+          <PriorityTag priority={task.priority} fontSize={9} />
+          <StatusTag status={task.status} fontSize={9} />
           {proj && (
             <div
               style={{

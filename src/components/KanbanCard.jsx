@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import PriorityTag from "./PriorityTag";
 
 export default function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
     return (
@@ -18,9 +19,7 @@ export default function KanbanCard({ task, canModify, onEdit, onDelete, onDragSt
             )}
             <div className="kanban-card-title">{task.title}</div>
             <div className="kanban-card-footer">
-                {task.priority && (
-                    <span className={`tag tag-${task.priority.toLowerCase()}`} style={{ fontSize: 9 }}>{task.priority.toUpperCase()}</span>
-                )}
+                <PriorityTag priority={task.priority} fontSize={9} />
             </div>
         </button>
     );
