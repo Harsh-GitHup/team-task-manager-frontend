@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import PriorityTag from "./PriorityTag";
 import StatusBadge from "./StatusBadge";
+import IconActionButtons from "./IconActionButtons";
 
 export default function TaskListItem({ task, canModify, onEdit, onDelete }) {
     const isDone = task.status === "Done";
@@ -26,10 +27,14 @@ export default function TaskListItem({ task, canModify, onEdit, onDelete }) {
             </div>
 
             {canModify && (
-                <div style={{ display: "flex", gap: 6 }} >
-                    {onEdit && <button className="icon-btn edit" onClick={(e) => { e.stopPropagation(); onEdit(e); }} title="Edit Project">✎</button>}
-                    {onDelete && <button className="icon-btn del" onClick={(e) => { e.stopPropagation(); onDelete(e); }} title="Delete Project">🗑️</button>}
-                </div>
+                <IconActionButtons
+                    item={task}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    titleEdit="Edit Task"
+                    titleDelete="Delete Task"
+                    style={{ display: "flex", gap: 6 }}
+                />
             )}
         </button>
     );

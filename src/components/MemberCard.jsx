@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import IconActionButtons from "./IconActionButtons";
 
 /**
  * MemberCard — a single row in any member list.
@@ -43,14 +44,14 @@ export default function MemberCard({
       </span>
 
       {canEdit && (
-        <div style={{ display: "flex", gap: 6, marginLeft: 4 }}>
-          <button className="icon-btn edit" onClick={() => onEdit?.(member)}>
-            ✎
-          </button>
-          <button className="icon-btn del" onClick={() => onDelete?.(member)}>
-            🗑️
-          </button>
-        </div>
+        <IconActionButtons
+          item={member}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          titleEdit="Edit Member"
+          titleDelete="Delete Member"
+          style={{ display: "flex", gap: 6, marginLeft: 4 }}
+        />
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import PropTypes from "prop-types";
+import IconActionButtons from "./IconActionButtons";
 
 export default function ProjectCard({ project, taskCount, done, memberCount, onEdit, onDelete, onClick }) {
     const pct = taskCount ? Math.round((done / taskCount) * 100) : 0;
@@ -45,10 +46,14 @@ export default function ProjectCard({ project, taskCount, done, memberCount, onE
             </div>
 
             {(onEdit || onDelete) && (
-                <div className="project-card-actions">
-                    {onEdit && <button className="icon-btn edit" onClick={(e) => { e.stopPropagation(); onEdit(e); }} title="Edit Project">✎</button>}
-                    {onDelete && <button className="icon-btn del" onClick={(e) => { e.stopPropagation(); onDelete(e); }} title="Delete Project">🗑️</button>}
-                </div>
+                <IconActionButtons
+                    item={project}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    titleEdit="Edit Project"
+                    titleDelete="Delete Project"
+                    className="project-card-actions"
+                />
             )}
         </button>
     );

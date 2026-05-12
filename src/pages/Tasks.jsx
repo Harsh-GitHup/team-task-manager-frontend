@@ -9,6 +9,7 @@ import Toast from "../components/Toast";
 import LoadingState from "../components/LoadingState";
 import TaskForm from "../components/TaskForm";
 import TaskRow from "../components/TaskRow";
+import Pagination from "../components/Pagination";
 
 // Group definitions for the task list
 const GROUPS = [
@@ -171,25 +172,12 @@ function Tasks() {
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 32, marginBottom: 40 }}>
-            <button
-              className="btn-sm btn-ghost"
-              disabled={page === 1}
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-            >
-              Previous
-            </button>
-            <span style={{ fontSize: 13, color: 'var(--text2)' }}>
-              Page <strong>{page}</strong> of {totalPages}
-            </span>
-            <button
-              className="btn-sm btn-ghost"
-              disabled={page === totalPages}
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            >
-              Next
-            </button>
-          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+          />
         )}
       </>
     );

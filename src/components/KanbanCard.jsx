@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import PriorityTag from "./PriorityTag";
+import IconActionButtons from "./IconActionButtons";
 
 export default function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
     return (
@@ -12,10 +13,14 @@ export default function KanbanCard({ task, canModify, onEdit, onDelete, onDragSt
             style={{ cursor: canModify ? "grab" : "default", position: "relative" }}
         >
             {canModify && (
-                <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }} >
-                    {onEdit && <button className="icon-btn edit" onClick={(e) => { e.stopPropagation(); onEdit(e); }} title="Edit Project">✎</button>}
-                    {onDelete && <button className="icon-btn del" onClick={(e) => { e.stopPropagation(); onDelete(e); }} title="Delete Project">🗑️</button>}
-                </div>
+                <IconActionButtons
+                    item={task}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    titleEdit="Edit Task"
+                    titleDelete="Delete Task"
+                    style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }}
+                />
             )}
             <div className="kanban-card-title">{task.title}</div>
             <div className="kanban-card-footer">
