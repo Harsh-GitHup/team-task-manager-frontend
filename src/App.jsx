@@ -24,11 +24,16 @@ function App() {
       {isAuthenticated ? (
         <div className={`app-shell ${isSidebarOpen ? 'sidebar-open' : ''}`}>
           <Sidebar />
-          
+
           {isSidebarOpen && (
-            <div className="sidebar-backdrop" onClick={closeSidebar} />
+            <button
+              type="button"
+              className="sidebar-backdrop"
+              onClick={closeSidebar}
+              aria-label="Close sidebar"
+            />
           )}
-          
+
           <div
             style={{
               pointerEvents: "none",

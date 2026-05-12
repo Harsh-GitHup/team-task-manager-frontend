@@ -28,28 +28,6 @@ function TaskForm({
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
 
-    useEffect(() => {
-        setForm({
-            title: initialData?.title || "",
-            description: initialData?.description || "",
-            project_id: initialData?.project_id
-                ? String(initialData.project_id)
-                : projects[0]?.id
-                ? String(projects[0].id)
-                : "",
-            assigned_to: initialData?.assigned_to ? String(initialData.assigned_to) : "",
-            status: initialData?.status || "Todo",
-            priority: initialData?.priority || "medium",
-            due_date: initialData?.due_date ? String(initialData.due_date).slice(0, 10) : "",
-        });
-
-        if (initialData?.id) {
-            fetchAttachments(initialData.id);
-        } else {
-            setAttachments([]);
-        }
-    }, [initialData, projects]);
-
     const fetchAttachments = async (taskId) => {
         try {
             const res = await API.get(`/tasks/${taskId}/attachments`);
@@ -58,6 +36,33 @@ function TaskForm({
             console.error("Failed to fetch attachments", err);
         }
     };
+
+    useEffect(() => {
+        Promise.resolve().then(() => {
+            const defaultProjectId = projects[0]?.id ? String(projects[0].id) : ``;
+            setForm({
+                title: initialData?.title || "",
+                description: initialData?.description || "",
+                project_id: initialData?.project_id
+                    ? String(initialData.project_id)
+                    : defaultProjectId,
+                assigned_to: initialData?.assigned_to
+                    ? String(initialData.assigned_to)
+                    : "",
+                status: initialData?.status || "Todo",
+                priority: initialData?.priority || "medium",
+                due_date: initialData?.due_date
+                    ? String(initialData.due_date).slice(0, 10)
+                    : "",
+            });
+
+            if (initialData?.id) {
+                fetchAttachments(initialData.id);
+            } else {
+                setAttachments([]);
+            }
+        });
+    }, [initialData, projects]);
 
     const handleFileUpload = async (e) => {
         if (!initialData?.id) return;

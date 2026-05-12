@@ -46,14 +46,40 @@ export default function TaskRow({
   const priorityClass = (task.priority || "").toLowerCase();
 
   return (
-    <div className="task-item" onClick={() => onEdit(task)} style={{ padding: "14px 16px", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.04)" }}>
-      <div
-        className={`task-check ${task.status === 'Done' ? 'done' : ''}`}
+    <button
+      type="button"
+      className="task-item"
+      onClick={() => onEdit(task)}
+      style={{
+        display: "flex",
+        width: "100%",
+        textAlign: "left",
+        padding: "14px 16px",
+        borderRadius: 12,
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid rgba(255,255,255,0.04)",
+        cursor: "pointer",
+        color: "inherit",
+      }}
+      aria-label={`Open task ${task.title}`}
+    >
+      <button
+        type="button"
+        aria-label={`Mark task ${task.title} as ${task.status === "Done" ? "Todo" : "Done"}`}
+        className={`task-check ${task.status === "Done" ? "done" : ""}`}
         onClick={handleToggle}
-        style={{ width: 20, height: 20, border: "2px solid rgba(255,255,255,0.15)", borderRadius: "50%", background: task.status === 'Done' ? "var(--green)" : "transparent" }}
+        style={{
+          width: 20,
+          height: 20,
+          padding: 0,
+          border: "2px solid rgba(255,255,255,0.15)",
+          borderRadius: "50%",
+          background: task.status === "Done" ? "var(--green)" : "transparent",
+          cursor: "pointer",
+        }}
       >
-        {task.status === 'Done' ? '✓' : ''}
-      </div>
+        {task.status === "Done" ? "✓" : ""}
+      </button>
 
       <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
         <div

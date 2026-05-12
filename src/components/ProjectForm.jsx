@@ -18,18 +18,29 @@ const COLOR_CHOICES = [
     "#ff6b6b",
 ];
 
-function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel = "Save Project", showTeamSelect = true }) {
-    const [form, setForm] = useState(DEFAULT_FORM);
-
-    useEffect(() => {
-        setForm({
-            title: initialData?.title || "",
-            description: initialData?.description || "",
-            team_id: initialData?.team_id ? String(initialData.team_id) : initialData?.teamId ? String(initialData.teamId) : teams[0]?.id ? String(teams[0].id) : "",
-            emoji: initialData?.emoji || "📁",
-            color: initialData?.color || "#7c6aff",
-        });
-    }, [initialData, teams]);
+function ProjectForm({
+    initialData,
+    teams = [],
+    onSubmit,
+    onCancel,
+    submitLabel = "Save Project",
+    showTeamSelect = true,
+}) {
+    const [form, setForm] = useState(() => {
+        const defaultForm = { ...DEFAULT_FORM };
+        if (initialData?.title) defaultForm.title = initialData.title;
+        if (initialData?.description) defaultForm.description = initialData.description;
+        if (initialData?.team_id) {
+            defaultForm.team_id = String(initialData.team_id);
+        } else if (initialData?.teamId) {
+            defaultForm.team_id = String(initialData.teamId);
+        } else if (teams[0]?.id) {
+            defaultForm.team_id = String(teams[0].id);
+        }
+        if (initialData?.emoji) defaultForm.emoji = initialData.emoji;
+        if (initialData?.color) defaultForm.color = initialData.color;
+        return defaultForm;
+    });
 
     const handleSubmit = (e) => {
         e.preventDefault();

@@ -4,6 +4,29 @@ import { useUI } from "../context/UIContext";
 import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 
+const getNotificationIcon = (type) => {
+  switch (type) {
+    case "task":
+      return "📝";
+    case "message":
+      return "💬";
+    case "team":
+      return "👥";
+    case "project":
+      return "📁";
+    case "reminder":
+      return "⏰";
+    case "success":
+      return "✅";
+    case "warning":
+      return "⚠️";
+    case "error":
+      return "❌";
+    default:
+      return "🔔";
+  }
+};
+
 /**
  * PageShell — wraps every authenticated page with the standard
  * `.main > .topbar + .content` layout so pages don't repeat that boilerplate.
@@ -44,22 +67,30 @@ export default function PageShell({ title, actions, children, noPad = false }) {
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           {/* Global Notification Icon */}
           <div style={{ position: "relative" }} ref={notifRef}>
-            <div 
-              style={{ 
-                cursor: "pointer", 
-                fontSize: 20, 
-                padding: "8px", 
+            <button
+              style={{
+                cursor: "pointer",
+                fontSize: 20,
+                padding: "8px",
                 borderRadius: "50%",
-                background: showNotifs ? "rgba(124,106,255,0.1)" : "transparent",
-                transition: "all 0.2s"
+                background: showNotifs
+                  ? "rgba(124,106,255,0.1)"
+                  : "transparent",
+                transition: "all 0.2s",
+                border: "none",
+                display: "flex",
+                alignItems: "center",
               }}
               onClick={handleToggleNotifs}
+              aria-label="Toggle Notifications"
+              aria-expanded={showNotifs}
+              aria-haspopup="dialog"
             >
               🔔
               {unreadCount > 0 && (
                 <span className="notification-badge">{unreadCount}</span>
               )}
-            </div>
+            </button>
 
             {showNotifs && (
               <div className="notification-dropdown">
@@ -106,7 +137,7 @@ export default function PageShell({ title, actions, children, noPad = false }) {
                       >
                         <div style={{ display: "flex", gap: 10 }}>
                           <div className={`notif-icon-circle ${n.type}`}>
-                            {n.type === 'message' ? '💬' : n.type === 'project' ? '📁' : '📋'}
+                            {getNotificationIcon(n.type)}
                           </div>
                           <div style={{ flex: 1 }}>
                             <div className="notif-item-title">{n.title}</div>

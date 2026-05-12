@@ -14,11 +14,18 @@ export default function Modal({ open, onClose, title, children, width }) {
   if (!open) return null;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
+    <button
+      className="modal-backdrop"
+      aria-label="Close modal"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      type="button"
+    >
+      <dialog
         className="modal-card"
         style={width ? { width } : undefined}
-        onClick={(e) => e.stopPropagation()}
+        open
       >
         {title && (
           <div className="modal-title" style={{ padding: "20px 24px 0" }}>
@@ -26,8 +33,8 @@ export default function Modal({ open, onClose, title, children, width }) {
           </div>
         )}
         {children}
-      </div>
-    </div>
+      </dialog>
+    </button>
   );
 }
 

@@ -10,16 +10,29 @@ export const UIProvider = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => !prev);
+  }, []);
+
+  const closeSidebar = useCallback(() => {
+    setIsSidebarOpen(false);
+  }, []);
+  const contextValue = useMemo(
+    () => ({ isSidebarOpen, toggleSidebar, closeSidebar }),
+    [isSidebarOpen, toggleSidebar, closeSidebar]
+  );
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
-    closeSidebar();
-  }, [location.pathname]);
+    const timeoutId = setTimeout(() => {
+      closeSidebar();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [location.pathname, closeSidebar]);
 
   return (
-    <UIContext.Provider value={{ isSidebarOpen, toggleSidebar, closeSidebar }}>
+    <UIContext.Provider value={contextValue}>
       {children}
     </UIContext.Provider>
   );
