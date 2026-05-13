@@ -10,8 +10,7 @@ function Sidebar() {
   const { chatNotifications } = useNotifications();
   const { isSidebarOpen } = useUI();
 
-  // Total chat messages across all teams
-  const totalChatNotifs = Object.values(chatNotifications).reduce((a, b) => a + b, 0);
+  const totalChatUnread = Object.values(chatNotifications).reduce((sum, count) => sum + count, 0);
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [showAllProjects, setShowAllProjects] = useState(false);
@@ -29,7 +28,7 @@ function Sidebar() {
 
     const loadProjects = async () => {
       try {
-        const res = await API.get("/projects", { params: { limit: 20 } });
+        const res = await API.get("/projects", { params: { limit: 1000 } });
         if (!cancelled) {
           setProjects(res.data.projects || res.data || []);
         }
@@ -71,8 +70,8 @@ function Sidebar() {
           >
             <span className="nav-item-icon">{item.icon}</span>
             <span>{item.label}</span>
-            {item.to === "/chat" && totalChatNotifs > 0 && (
-              <span className="sidebar-badge">{totalChatNotifs}</span>
+            {item.to === "/chat" && totalChatUnread > 0 && (
+              <span className="sidebar-badge">{totalChatUnread}</span>
             )}
           </NavLink>
         ))}

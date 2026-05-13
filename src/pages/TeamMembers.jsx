@@ -1,3 +1,4 @@
+import PropTypes from "prop-types";
 import { useEffect, useMemo, useState, useContext, useCallback } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
@@ -34,6 +35,18 @@ function RoleModal({ member, role, onRoleChange, onSave, onClose }) {
     </Modal>
   );
 }
+
+RoleModal.propTypes = {
+  member: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    name: PropTypes.string,
+    role: PropTypes.string,
+  }),
+  role: PropTypes.string.isRequired,
+  onRoleChange: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Main page

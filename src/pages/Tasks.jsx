@@ -64,7 +64,7 @@ function Tasks() {
     const loadMetadata = async () => {
       try {
         const [pRes, uRes] = await Promise.all([
-          API.get("/projects"),
+          API.get("/projects", { params: { limit: 1000 } }),
           API.get("/auth/users"),
         ]);
         setProjects(pRes.data.projects || pRes.data || []);

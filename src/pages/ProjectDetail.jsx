@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import PropTypes from "prop-types";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
@@ -13,6 +14,7 @@ import TaskForm from "../components/TaskForm";
 const STATUS_COLS = [
   { key: "Todo", label: "To Do", color: "#5a5a7a" },
   { key: "In Progress", label: "In Progress", color: "#7c6aff" },
+  { key: "Review", label: "In Review", color: "#60a5fa" },
   { key: "Done", label: "Done", color: "#2dd4a0" },
 ];
 
@@ -21,6 +23,24 @@ const STATUS_COLS = [
 // ─────────────────────────────────────────────────────────
 function TaskListItem({ task, canModify, onEdit, onDelete }) {
   const isDone = task.status === "Done";
+  let statusBackground;
+  if (isDone) {
+    statusBackground = "rgba(45,212,160,0.12)";
+  } else if (task.status === "In Progress") {
+    statusBackground = "rgba(124,106,255,0.15)";
+  } else {
+    statusBackground = "rgba(255,255,255,0.05)";
+  }
+
+  let statusColor;
+  if (isDone) {
+    statusColor = "var(--green)";
+  } else if (task.status === "In Progress") {
+    statusColor = "var(--accent2)";
+  } else {
+    statusColor = "var(--text3)";
+  }
+
   return (
     <div
       className="task-item"
@@ -36,7 +56,16 @@ function TaskListItem({ task, canModify, onEdit, onDelete }) {
           {task.title}
         </div>
         <div className="task-meta">
-          <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, textTransform: "uppercase", background: isDone ? "rgba(45,212,160,0.12)" : task.status === "In Progress" ? "rgba(124,106,255,0.15)" : "rgba(255,255,255,0.05)", color: isDone ? "var(--green)" : task.status === "In Progress" ? "var(--accent2)" : "var(--text3)" }}>
+          <span style={{
+            fontSize: 10,
+            fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: 99,
+            textTransform: "uppercase",
+            background: statusBackground,
+            color: statusColor
+          }}
+          >
             {task.status}
           </span>
           {task.priority && (
@@ -46,14 +75,46 @@ function TaskListItem({ task, canModify, onEdit, onDelete }) {
       </div>
 
       {canModify && (
-        <div style={{ display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-          <button className="icon-btn edit" onClick={() => onEdit(task)}>✎</button>
-          <button className="icon-btn del" onClick={() => onDelete(task)}>🗑️</button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            className="icon-btn edit"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(task);
+            }}
+            type="button"
+            title="Edit Task"
+          >
+            ✎
+          </button>
+          <button
+            className="icon-btn del"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task);
+            }}
+            type="button"
+            title="Delete Task"
+          >
+            🗑️
+          </button>
         </div>
       )}
     </div>
   );
 }
+
+TaskListItem.propTypes = {
+  task: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string.isRequired,
+    status: PropTypes.string.isRequired,
+    priority: PropTypes.string,
+  }).isRequired,
+  canModify: PropTypes.bool.isRequired,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Local: kanban card
@@ -68,9 +129,29 @@ function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
       style={{ cursor: canModify ? "grab" : "default", position: "relative" }}
     >
       {canModify && (
-        <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }} onClick={(e) => e.stopPropagation()}>
-          <button className="icon-btn edit" onClick={() => onEdit(task)}>✎</button>
-          <button className="icon-btn del" onClick={() => onDelete(task)}>🗑️</button>
+        <div style={{ position: "absolute", top: 10, right: 10, display: "flex", gap: 6 }}>
+          <button
+            className="icon-btn edit"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(task);
+            }}
+            type="button"
+            title="Edit Task"
+          >
+            ✎
+          </button>
+          <button
+            className="icon-btn del"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(task);
+            }}
+            type="button"
+            title="Delete Task"
+          >
+            🗑️
+          </button>
         </div>
       )}
       <div className="kanban-card-title">{task.title}</div>
@@ -82,6 +163,18 @@ function KanbanCard({ task, canModify, onEdit, onDelete, onDragStart }) {
     </div>
   );
 }
+
+KanbanCard.propTypes = {
+  task: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    title: PropTypes.string.isRequired,
+    priority: PropTypes.string,
+  }).isRequired,
+  canModify: PropTypes.bool.isRequired,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+  onDragStart: PropTypes.func.isRequired,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Main page
@@ -106,7 +199,10 @@ function ProjectDetail() {
 
   const refreshData = async () => {
     try {
-      const [pRes, tRes] = await Promise.all([API.get("/projects"), API.get("/tasks")]);
+      const [pRes, tRes] = await Promise.all([
+        API.get("/projects", { params: { limit: 1000 } }),
+        API.get("/tasks", { params: { limit: 1000 } }),
+      ]);
       const allProjects = pRes.data.projects || pRes.data || [];
       const allTasks = tRes.data.tasks || tRes.data || [];
       setProjects(allProjects);
@@ -122,7 +218,8 @@ function ProjectDetail() {
     const load = async () => {
       try {
         const [pRes, tRes, tmRes, uRes] = await Promise.all([
-          API.get("/projects"), API.get("/tasks"),
+          API.get("/projects", { params: { limit: 1000 } }),
+          API.get("/tasks", { params: { limit: 1000 } }),
           API.get("/teams"), API.get("/auth/users"),
         ]);
         const allProjects = pRes.data.projects || pRes.data || [];
@@ -228,7 +325,7 @@ function ProjectDetail() {
 
       await API.put(`/tasks/${taskId}`, { status });
       showToast("success", "Status updated", `Moved to ${status}`);
-    } catch (err) {
+    } catch {
       showToast("error", "Move failed", "Could not update status.");
       await refreshData(); // Revert on failure
     }
@@ -249,7 +346,17 @@ function ProjectDetail() {
   // Topbar breadcrumb + actions
   const topbarTitle = (
     <>
-      <span style={{ opacity: 0.4, fontSize: 14, fontWeight: 400, cursor: "pointer" }} onClick={() => navigate("/projects")}>Projects</span>
+      <span
+        style={{
+          opacity: 0.4,
+          fontSize: 14,
+          fontWeight: 400,
+          cursor: "pointer"
+        }}
+        onClick={() => navigate("/projects")}
+      >
+        Projects
+      </span>
       <span style={{ opacity: 0.4, margin: "0 6px" }}>/</span>
       {project.emoji} {project.title}
     </>
@@ -282,8 +389,17 @@ function ProjectDetail() {
 
       {/* ── View tabs ── */}
       <div className="tabs" style={{ marginBottom: 20 }}>
-        <div className={`tab ${tab === "list" ? "active" : ""}`} onClick={() => setTab("list")}>List</div>
-        <div className={`tab ${tab === "kanban" ? "active" : ""}`} onClick={() => setTab("kanban")}>Board</div>
+        <div
+          className={`tab ${tab === "list" ? "active" : ""}`}
+          onClick={() => setTab("list")}
+        >
+          List
+        </div>
+        <div
+          className={`tab ${tab === "kanban" ? "active" : ""}`}
+          onClick={() => setTab("kanban")}>
+          Board
+        </div>
       </div>
 
       {/* ── List view ── */}

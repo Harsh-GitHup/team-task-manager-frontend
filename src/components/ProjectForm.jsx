@@ -1,27 +1,41 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import PropTypes from "prop-types";
 
-const DEFAULT_FORM = {
-    title: "",
-    description: "",
-    team_id: "",
-    emoji: "📁",
-    color: "#7c6aff",
+
+
+const COLOR_CHOICES = [
+    "#7c6aff",
+    "#2dd4a0",
+    "#ffb347",
+    "#f472b6",
+    "#60a5fa",
+    "#ff6b6b",
+];
+
+const resolveTeamId = (initialData, teams) => {
+    if (initialData?.team_id) {
+        return String(initialData.team_id);
+    }
+    if (initialData?.teamId) {
+        return String(initialData.teamId);
+    }
+    if (teams[0]?.id) {
+        return String(teams[0].id);
+    }
+    return "";
 };
 
-const COLOR_CHOICES = ["#7c6aff", "#2dd4a0", "#ffb347", "#f472b6", "#60a5fa", "#ff6b6b"];
+const buildFormState = (initialData, teams) => ({
+    title: initialData?.title || "",
+    description: initialData?.description || "",
+    team_id: resolveTeamId(initialData, teams),
+    emoji: initialData?.emoji || "📁",
+    color: initialData?.color || "#7c6aff",
+});
 
 function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel = "Save Project", showTeamSelect = true }) {
-    const [form, setForm] = useState(DEFAULT_FORM);
-
-    useEffect(() => {
-        setForm({
-            title: initialData?.title || "",
-            description: initialData?.description || "",
-            team_id: initialData?.team_id ? String(initialData.team_id) : initialData?.teamId ? String(initialData.teamId) : teams[0]?.id ? String(teams[0].id) : "",
-            emoji: initialData?.emoji || "📁",
-            color: initialData?.color || "#7c6aff",
-        });
-    }, [initialData, teams]);
+    const initialForm = useMemo(() => buildFormState(initialData, teams), [initialData, teams]);
+    const [form, setForm] = useState(() => initialForm);
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -38,9 +52,10 @@ function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel 
     return (
         <form onSubmit={handleSubmit}>
             <div className="form-group">
-                <label>Project Name</label>
+                <label htmlFor="project_name">Project Name</label>
                 <input
                     className="form-input"
+                    id="project_name"
                     placeholder="e.g. Mobile App v3"
                     value={form.title}
                     onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -48,9 +63,10 @@ function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel 
             </div>
 
             <div className="form-group">
-                <label>Description</label>
+                <label htmlFor="project_description">Description</label>
                 <textarea
                     className="form-input"
+                    id="project_description"
                     placeholder="What’s this project about?"
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -60,10 +76,11 @@ function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel 
 
             <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
                 <div className="form-group">
-                    <label>Emoji</label>
+                    <label htmlFor="project_emoji">Emoji</label>
                     <input
                         className="form-input"
-                        placeholder="📁"
+                        id="project_emoji"
+                        placeholder="Use emoji as icon (e.g. 📁)"
                         value={form.emoji}
                         onChange={(e) => setForm({ ...form, emoji: e.target.value })}
                         maxLength="2"
@@ -71,7 +88,7 @@ function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel 
                 </div>
 
                 <div className="form-group">
-                    <label>Color</label>
+                    <label htmlFor="project_color">Color</label>
                     <div className="color-picker-row">
                         {COLOR_CHOICES.map((choice) => (
                             <button
@@ -88,9 +105,10 @@ function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel 
 
             {showTeamSelect && (
                 <div className="form-group">
-                    <label>Team</label>
+                    <label htmlFor="project_team">Team</label>
                     <select
                         className="form-input"
+                        id="project_team"
                         value={form.team_id}
                         onChange={(e) => setForm({ ...form, team_id: e.target.value })}
                     >
@@ -115,5 +133,26 @@ function ProjectForm({ initialData, teams = [], onSubmit, onCancel, submitLabel 
         </form>
     );
 }
+
+ProjectForm.propTypes = {
+    initialData: PropTypes.shape({
+        title: PropTypes.string,
+        description: PropTypes.string,
+        team_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        teamId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        emoji: PropTypes.string,
+        color: PropTypes.string,
+    }),
+    teams: PropTypes.arrayOf(
+        PropTypes.shape({
+            id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+            name: PropTypes.string.isRequired,
+        })
+    ),
+    onSubmit: PropTypes.func,
+    onCancel: PropTypes.func,
+    submitLabel: PropTypes.string,
+    showTeamSelect: PropTypes.bool,
+};
 
 export default ProjectForm;

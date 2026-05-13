@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext, useCallback } from "react";
 import { Link } from "react-router-dom";
+import PropTypes from "prop-types";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import { io } from "socket.io-client";
@@ -22,6 +23,13 @@ function StatCard({ label, value, sub, variant }) {
     </div>
   );
 }
+
+StatCard.propTypes = {
+  label: PropTypes.string.isRequired,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+  sub: PropTypes.string,
+  variant: PropTypes.string,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Dashboard

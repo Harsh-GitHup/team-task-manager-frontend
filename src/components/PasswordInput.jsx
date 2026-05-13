@@ -1,11 +1,18 @@
 import { useState } from "react";
+import PropTypes from "prop-types";
 
 /**
  * PasswordInput — form input for passwords with a Show/Hide toggle button.
  *
  * Props: same as a standard <input> (value, onChange, onKeyDown, placeholder, etc.)
  */
-export default function PasswordInput({ value, onChange, onKeyDown, placeholder = "Your Password", ...rest }) {
+export default function PasswordInput({
+  value,
+  onChange,
+  onKeyDown,
+  placeholder = "Your Password",
+  ...rest
+}) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -43,3 +50,10 @@ export default function PasswordInput({ value, onChange, onKeyDown, placeholder 
     </div>
   );
 }
+
+PasswordInput.propTypes = {
+  value: PropTypes.string,
+  onChange: PropTypes.func,
+  onKeyDown: PropTypes.func,
+  placeholder: PropTypes.string,
+};

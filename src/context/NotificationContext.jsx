@@ -1,4 +1,5 @@
 import { createContext, useState, useEffect, useContext, useMemo, useRef } from 'react';
+import PropTypes from "prop-types";
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 
@@ -135,4 +136,8 @@ export const NotificationProvider = ({ children }) => {
       {children}
     </NotificationContext.Provider>
   );
+};
+
+NotificationProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };

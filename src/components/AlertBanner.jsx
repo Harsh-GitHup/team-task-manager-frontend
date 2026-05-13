@@ -1,3 +1,5 @@
+import PropTypes from "prop-types";
+
 /**
  * AlertBanner — success / error message box used on auth forms.
  *
@@ -18,15 +20,25 @@ export default function AlertBanner({ type = "error", message, children }) {
         padding: "14px",
         borderRadius: "8px",
         fontSize: "13px",
-        background: isSuccess ? "rgba(45,212,160,0.15)" : "rgba(255,107,107,0.15)",
+        background: isSuccess
+          ? "rgba(45,212,160,0.15)"
+          : "rgba(255,107,107,0.15)",
         border: isSuccess
           ? "1px solid rgba(45,212,160,0.3)"
           : "1px solid rgba(255,107,107,0.3)",
         color: isSuccess ? "var(--green)" : "var(--red)",
       }}
     >
-      <div style={{ fontWeight: 600, marginBottom: children ? 4 : 0 }}>{message}</div>
+      <div style={{ fontWeight: 600, marginBottom: children ? 4 : 0 }}>
+        {message}
+      </div>
       {children}
     </div>
   );
 }
+
+AlertBanner.propTypes = {
+  type: PropTypes.oneOf(["success", "error"]),
+  message: PropTypes.string,
+  children: PropTypes.node,
+};

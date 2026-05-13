@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
+import PropTypes from "prop-types";
 import API from "../api";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
@@ -20,6 +21,12 @@ function SectionPanel({ title, children, style }) {
   );
 }
 
+SectionPanel.propTypes = {
+  title: PropTypes.string,
+  children: PropTypes.node,
+  style: PropTypes.object,
+};
+
 // ─────────────────────────────────────────────────────────
 //  Local: labelled form field row
 // ─────────────────────────────────────────────────────────
@@ -31,6 +38,11 @@ function FieldRow({ label, children }) {
     </div>
   );
 }
+
+FieldRow.propTypes = {
+  label: PropTypes.string.isRequired,
+  children: PropTypes.node,
+};
 
 // ─────────────────────────────────────────────────────────
 //  Admin page
@@ -85,7 +97,10 @@ function Admin() {
     let cancelled = false;
     const load = async () => {
       try {
-        const [tRes, pRes] = await Promise.all([API.get("/teams"), API.get("/projects")]);
+        const [tRes, pRes] = await Promise.all([
+          API.get("/teams"),
+          API.get("/projects", { params: { limit: 1000 } }),
+        ]);
         if (cancelled) return;
         const loadedTeams = tRes.data || [];
         setTeams(loadedTeams);
@@ -175,7 +190,8 @@ function Admin() {
       await API.post("/projects", { title: projectForm.title.trim(), description: projectForm.description.trim(), team_id: selectedTeamId });
       setProjectForm({ title: "", description: "" });
       showToast("success", "Project created", "Project created successfully.");
-      const r = await API.get("/projects"); setProjects(r.data.projects || r.data || []);
+      const r = await API.get("/projects", { params: { limit: 1000 } });
+      setProjects(r.data.projects || r.data || []);
     } catch (err) { showToast("error", "Project creation failed", err.response?.data?.error || "Please try again."); }
   };
 

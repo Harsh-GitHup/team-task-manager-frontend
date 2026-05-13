@@ -1,4 +1,5 @@
 import { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
+import PropTypes from "prop-types";
 import { useLocation } from 'react-router-dom';
 
 const UIContext = createContext();
@@ -35,4 +36,8 @@ export const UIProvider = ({ children }) => {
       {children}
     </UIContext.Provider>
   );
+};
+
+UIProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };

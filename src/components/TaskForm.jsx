@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import PropTypes from "prop-types";
 import API from "../api";
 
 const DEFAULT_FORM = {
@@ -27,28 +28,6 @@ function TaskForm({
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
 
-    useEffect(() => {
-        setForm({
-            title: initialData?.title || "",
-            description: initialData?.description || "",
-            project_id: initialData?.project_id
-                ? String(initialData.project_id)
-                : projects[0]?.id
-                ? String(projects[0].id)
-                : "",
-            assigned_to: initialData?.assigned_to ? String(initialData.assigned_to) : "",
-            status: initialData?.status || "Todo",
-            priority: initialData?.priority || "medium",
-            due_date: initialData?.due_date ? String(initialData.due_date).slice(0, 10) : "",
-        });
-
-        if (initialData?.id) {
-            fetchAttachments(initialData.id);
-        } else {
-            setAttachments([]);
-        }
-    }, [initialData, projects]);
-
     const fetchAttachments = async (taskId) => {
         try {
             const res = await API.get(`/tasks/${taskId}/attachments`);
@@ -57,6 +36,33 @@ function TaskForm({
             console.error("Failed to fetch attachments", err);
         }
     };
+
+    useEffect(() => {
+        Promise.resolve().then(() => {
+            const defaultProjectId = projects[0]?.id ? String(projects[0].id) : ``;
+            setForm({
+                title: initialData?.title || "",
+                description: initialData?.description || "",
+                project_id: initialData?.project_id
+                    ? String(initialData.project_id)
+                    : defaultProjectId,
+                assigned_to: initialData?.assigned_to
+                    ? String(initialData.assigned_to)
+                    : "",
+                status: initialData?.status || "Todo",
+                priority: initialData?.priority || "medium",
+                due_date: initialData?.due_date
+                    ? String(initialData.due_date).slice(0, 10)
+                    : "",
+            });
+
+            if (initialData?.id) {
+                fetchAttachments(initialData.id);
+            } else {
+                setAttachments([]);
+            }
+        });
+    }, [initialData, projects]);
 
     const handleFileUpload = async (e) => {
         if (!initialData?.id) return;
@@ -95,8 +101,9 @@ function TaskForm({
 
             {/* Title */}
             <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Task Title</label>
+                <label htmlFor="task-title">Task Title</label>
                 <input
+                    id="task-title"
                     className="form-input"
                     placeholder="What needs to be done?"
                     value={form.title}
@@ -108,8 +115,9 @@ function TaskForm({
 
             {/* Description */}
             <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Description</label>
+                <label htmlFor="task-description">Description</label>
                 <textarea
+                    id="task-description"
                     className="form-input"
                     placeholder="Optional details..."
                     value={form.description}
@@ -121,8 +129,9 @@ function TaskForm({
             {/* Priority + Status */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Priority</label>
+                    <label htmlFor="task-priority">Priority</label>
                     <select
+                        id="task-priority"
                         className="form-input"
                         value={form.priority}
                         onChange={(e) => setForm({ ...form, priority: e.target.value })}
@@ -135,8 +144,9 @@ function TaskForm({
 
                 {showStatusSelect && (
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label>Status</label>
+                        <label htmlFor="task-status">Status</label>
                         <select
+                            id="task-status"
                             className="form-input"
                             value={form.status}
                             onChange={(e) => setForm({ ...form, status: e.target.value })}
@@ -154,8 +164,9 @@ function TaskForm({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 {showAssigneeSelect && (
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label>Assign To</label>
+                        <label htmlFor="task-assignee">Assign To</label>
                         <select
+                            id="task-assignee"
                             className="form-input"
                             value={form.assigned_to}
                             onChange={(e) => setForm({ ...form, assigned_to: e.target.value })}
@@ -169,8 +180,9 @@ function TaskForm({
                 )}
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Due Date</label>
+                    <label htmlFor="task-due-date">Due Date</label>
                     <input
+                        id="task-due-date"
                         type="date"
                         className="form-input"
                         value={form.due_date}
@@ -182,8 +194,9 @@ function TaskForm({
             {/* Project */}
             {showProjectSelect && (
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Project</label>
+                    <label htmlFor="task-project">Project</label>
                     <select
+                        id="task-project"
                         className="form-input"
                         value={form.project_id}
                         onChange={(e) => setForm({ ...form, project_id: e.target.value })}
@@ -257,5 +270,37 @@ function TaskForm({
         </form>
     );
 }
+
+TaskForm.propTypes = {
+    initialData: PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        title: PropTypes.string,
+        description: PropTypes.string,
+        project_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        assigned_to: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        status: PropTypes.string,
+        priority: PropTypes.string,
+        due_date: PropTypes.string,
+    }),
+    projects: PropTypes.arrayOf(
+        PropTypes.shape({
+            id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+            title: PropTypes.string.isRequired,
+            emoji: PropTypes.string,
+        })
+    ),
+    users: PropTypes.arrayOf(
+        PropTypes.shape({
+            id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+            name: PropTypes.string.isRequired,
+        })
+    ),
+    onSubmit: PropTypes.func,
+    onCancel: PropTypes.func,
+    submitLabel: PropTypes.string,
+    showProjectSelect: PropTypes.bool,
+    showAssigneeSelect: PropTypes.bool,
+    showStatusSelect: PropTypes.bool,
+};
 
 export default TaskForm;

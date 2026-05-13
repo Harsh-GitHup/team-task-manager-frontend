@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import PropTypes from "prop-types";
 
 function Toast({ type = "success", title, message, onClose, duration = 2800 }) {
     useEffect(() => {
@@ -14,5 +15,13 @@ function Toast({ type = "success", title, message, onClose, duration = 2800 }) {
         </div>
     );
 }
+
+Toast.propTypes = {
+    type: PropTypes.oneOf(["success", "error", "warning", "info"]),
+    title: PropTypes.string,
+    message: PropTypes.string,
+    onClose: PropTypes.func,
+    duration: PropTypes.number,
+};
 
 export default Toast;
