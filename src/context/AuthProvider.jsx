@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { AuthContext } from "./AuthContext";
 
@@ -18,9 +18,20 @@ export function AuthProvider({ children }) {
         setUser(null);
     };
 
+    const setUserRole = useCallback((newRole) => {
+        setUser((prevUser) => {
+            if (prevUser) {
+                const updatedUser = { ...prevUser, role: newRole };
+                localStorage.setItem("user", JSON.stringify(updatedUser));
+                return updatedUser;
+            }
+            return prevUser;
+        });
+    }, []);
+
     const value = useMemo(
-        () => ({ user, login, logout }),
-        [user]
+        () => ({ user, login, logout, setUserRole }),
+        [user, setUserRole]
     );
 
     return (

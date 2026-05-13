@@ -26,7 +26,12 @@ function App() {
           <Sidebar />
           
           {isSidebarOpen && (
-            <div className="sidebar-backdrop" onClick={closeSidebar} />
+            <button
+              type="button"
+              className="sidebar-backdrop"
+              onClick={closeSidebar}
+              aria-label="Close sidebar"
+            />
           )}
           
           <div

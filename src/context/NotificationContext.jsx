@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext, useMemo } from 'react';
+import { createContext, useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
 
@@ -7,26 +7,31 @@ const NotificationContext = createContext();
 export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }) => {
-  const { user } = useContext(AuthContext);
+  const { user, setUserRole } = useContext(AuthContext);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]); // List of notification objects
   const [chatNotifications, setChatNotifications] = useState({});
   const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
     if (!user) {
-      setNotifications([]);
-      setUnreadCount(0);
-      setChatNotifications({});
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
+      if (isInitialized.current) {
+        setNotifications([]);
+        setUnreadCount(0);
+        setChatNotifications({});
       }
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      isInitialized.current = false;
       return;
     }
 
     const newSocket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
-    setSocket(newSocket);
+    socketRef.current = newSocket;
+    queueMicrotask(() => setSocket(newSocket));
 
     // Join company room for global notifications
     if (user.company_id) {
@@ -76,11 +81,24 @@ export const NotificationProvider = ({ children }) => {
       setUnreadCount(prev => prev + 1);
     });
 
+    // Handle real-time role changes
+    newSocket.on("role_changed", (data) => {
+      // If this user's role was changed, update their auth context
+      if (String(data.user_id) === String(user.id)) {
+        if (setUserRole && typeof setUserRole === 'function') {
+          setUserRole(data.new_role);
+        }
+      }
+    });
+
     return () => {
       newSocket.disconnect();
-      setSocket(null);
+      if (socketRef.current === newSocket) {
+        socketRef.current = null;
+      }
+      setSocket(currentSocket => (currentSocket === newSocket ? null : currentSocket));
     };
-  }, [user]);
+  }, [user, setUserRole]);
 
   const clearAll = () => {
     setNotifications([]);
