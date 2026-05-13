@@ -14,6 +14,21 @@ export default function PageShell({ title, actions, children, noPad = false }) {
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
 
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case "task":
+        return "📝";
+      case "message":
+        return "💬";
+      case "team":
+        return "👥";
+      case "project":
+        return "📁";
+      default:
+        return "🔔";
+    }
+  };
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClick = (e) => {
@@ -107,7 +122,7 @@ export default function PageShell({ title, actions, children, noPad = false }) {
                       >
                         <div style={{ display: "flex", gap: 10 }}>
                           <div className={`notif-icon-circle ${n.type}`}>
-                            {n.type === 'message' ? '💬' : n.type === 'project' ? '📁' : '📋'}
+                            {getNotificationIcon(n.type)}
                           </div>
                           <div style={{ flex: 1 }}>
                             <div className="notif-item-title">{n.title}</div>
