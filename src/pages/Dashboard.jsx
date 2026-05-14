@@ -89,7 +89,15 @@ function Dashboard() {
     };
     load();
 
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5000");
+    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+    console.debug("[Dashboard] resolved socketUrl:", socketUrl);
+    const socket = io(socketUrl, {
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 5,
+      transports: ['websocket']
+    });
     socket.on("refresh_tasks", fetchTasks);
     socket.on("refresh_projects", fetchProjects);
     return () => socket.disconnect();
