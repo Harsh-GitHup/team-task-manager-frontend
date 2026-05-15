@@ -56,4 +56,5 @@ PasswordInput.propTypes = {
   onChange: PropTypes.func,
   onKeyDown: PropTypes.func,
   placeholder: PropTypes.string,
+  autoComplete: PropTypes.string,
 };

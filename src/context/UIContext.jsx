@@ -1,10 +1,7 @@
-import { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import PropTypes from "prop-types";
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import { useLocation } from 'react-router-dom';
-
-const UIContext = createContext();
-
-export const useUI = () => useContext(UIContext);
+import { UIContext } from './uiContext.js';
 
 export const UIProvider = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

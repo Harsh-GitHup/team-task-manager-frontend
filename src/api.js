@@ -1,16 +1,19 @@
-import axios from "axios";
+import axios from 'axios';
+import { getApiBaseUrl } from './config/runtime.js';
 
-const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000/",
+const api = axios.create({
+  baseURL: getApiBaseUrl(),
+  withCredentials: true,
 });
 
 // Add a request interceptor to attach the JWT token
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token"); //
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
   if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
-});
+}, (err) => Promise.reject(err));
 
-export default API;
+export default api;

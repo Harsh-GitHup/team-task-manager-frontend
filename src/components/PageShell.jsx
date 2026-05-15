@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useNotifications } from "../context/NotificationContext";
-import { useUI } from "../context/UIContext";
+import { useNotifications } from "../context/useNotifications";
+import { useUI } from "../context/useUI";
 import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 
@@ -40,9 +40,27 @@ export default function PageShell({ title, actions, children, noPad = false }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // Close notifications on Escape key
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && showNotifs) {
+        setShowNotifs(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showNotifs]);
+
   const handleToggleNotifs = () => {
     if (!showNotifs) clearUnread();
     setShowNotifs(!showNotifs);
+  };
+
+  const handleNotifKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleToggleNotifs();
+    }
   };
 
   return (
@@ -60,7 +78,7 @@ export default function PageShell({ title, actions, children, noPad = false }) {
 
           {/* Global Notification Icon */}
           <div style={{ position: "relative" }} ref={notifRef}>
-            <div
+            <button
               style={{
                 cursor: "pointer",
                 fontSize: 20,
@@ -70,12 +88,17 @@ export default function PageShell({ title, actions, children, noPad = false }) {
                 transition: "all 0.2s"
               }}
               onClick={handleToggleNotifs}
+              tabIndex={0}
+              onKeyDown={handleNotifKeyDown}
+              aria-label="Toggle notifications"
+              aria-haspopup="true"
+              aria-expanded={showNotifs}
             >
               🔔
               {unreadCount > 0 && (
                 <span className="notification-badge">{unreadCount}</span>
               )}
-            </div>
+            </button>
 
             {showNotifs && (
               <div className="notification-dropdown">

@@ -2,8 +2,8 @@ import { NavLink } from "react-router-dom";
 import { useContext, useEffect, useState } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
-import { useNotifications } from "../context/NotificationContext";
-import { useUI } from "../context/UIContext";
+import { useNotifications } from "../context/useNotifications";
+import { useUI } from '../context/useUI';
 
 function Sidebar() {
   const { user, logout } = useContext(AuthContext);

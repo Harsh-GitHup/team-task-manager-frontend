@@ -237,7 +237,7 @@ function TaskForm({
                             {attachments.map(att => (
                                 <a
                                     key={att.id}
-                                    href={`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/uploads/${att.file_path}`}
+                                    href={new URL(att.file_path || `/uploads/${att.file_path}`, API.defaults.baseURL || undefined).toString()}
                                     target="_blank"
                                     rel="noreferrer"
                                     style={{

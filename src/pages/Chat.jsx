@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useRef } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
-import { useNotifications } from "../context/NotificationContext";
+import { useNotifications } from "../context/useNotifications";
 import PageShell from "../components/PageShell";
 import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
@@ -35,6 +35,13 @@ function Chat() {
     return [...prevMessages, msg];
   };
 
+  const sortMessagesByTime = (list) =>
+    [...list].sort((left, right) => {
+      const leftTime = new Date(left.created_at || 0).getTime();
+      const rightTime = new Date(right.created_at || 0).getTime();
+      return leftTime - rightTime;
+    });
+
   // Load teams
   useEffect(() => {
     const loadTeams = async () => {
@@ -60,13 +67,24 @@ function Chat() {
 
     const handleNewMessage = (msg) => {
       if (selectedTeam && String(msg.team_id) === String(selectedTeam.id)) {
-        setMessages((prev) => addUniqueMessage(prev, msg));
+        setMessages((prev) => sortMessagesByTime(addUniqueMessage(prev, msg)));
         clearTeamUnread(selectedTeam.id);
       }
     };
 
+    try {
     socket.on("new_message", handleNewMessage);
-    return () => socket.off("new_message", handleNewMessage);
+    } catch (err) {
+      console.warn('Failed to attach new_message handler', err);
+    }
+
+    return () => {
+      try {
+        socket.off("new_message", handleNewMessage);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    };
   }, [selectedTeam, socket, clearTeamUnread]);
 
   // Load messages when team changes
@@ -79,11 +97,12 @@ function Chat() {
       try {
         const res = await API.get(`/chat/${selectedTeam.id}`);
         if (!cancelled) {
-          setMessages(res.data || []);
+          setMessages(sortMessagesByTime(res.data || []));
           clearTeamUnread(selectedTeam.id);
         }
       } catch {
         if (!cancelled) {
+          console.error('fetchMessages error for team', selectedTeam?.id);
           showToast("error", "Failed to load messages", "Connection error");
         }
       } finally {
@@ -128,7 +147,12 @@ function Chat() {
       await API.post("/chat", { team_id: selectedTeam.id, message: text.trim() });
       setText("");
     } catch (err) {
-      showToast("error", "Send failed", err.response?.data?.error || "Message could not be sent");
+      console.error('sendMessage error', err);
+      const status = err?.response?.status;
+      const message = err?.response?.data?.error || err?.message || 'Message could not be sent';
+      const statusSuffix = status ? ` (${status})` : "";
+      const actionTitle = "Send failed ";
+      showToast("error", actionTitle + statusSuffix, message);
     }
   };
 
@@ -145,6 +169,8 @@ function Chat() {
                 key={t.id}
                 className={`chat-list-item ${selectedTeam?.id === t.id ? 'active' : ''}`}
                 onClick={() => selectTeam(t)}
+                role="button"
+                tabIndex={0}
               >
                 <div
                   className="member-avatar"

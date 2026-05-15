@@ -29,7 +29,7 @@ export default function TaskRow({
     e.stopPropagation();
     const newStatus = task.status === "Done" ? "Todo" : "Done";
     try {
-      await API.put(`/tasks/${task.id}`, { ...task, status: newStatus });
+      await API.put(`/tasks/${task.id}`, { status: newStatus });
       onRefresh();
     } catch (err) {
       console.error(err);
@@ -41,6 +41,21 @@ export default function TaskRow({
     onEdit(task);
   };
 
+  const handleContainerKey = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onEdit(task);
+    }
+  };
+
+  const handleCheckKey = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      // emulate click
+      handleToggle(e);
+    }
+  };
+
   // Convert status/priority to lowercase no-spaces for CSS class matching
   const statusClass = (task.status || "").replace(/\s+/g, "").toLowerCase();
   const priorityClass = (task.priority || "").toLowerCase();
@@ -49,6 +64,9 @@ export default function TaskRow({
     <div
       className="task-item"
       onClick={() => onEdit(task)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={handleContainerKey}
       style={{
         padding: "14px 16px",
         borderRadius: 12,
@@ -56,13 +74,18 @@ export default function TaskRow({
         border: "1px solid rgba(255,255,255,0.04)"
       }}
     >
-      <div
+      <button
         className={`task-check ${task.status === 'Done' ? 'done' : ''}`}
         onClick={handleToggle}
+        tabIndex={0}
+        onKeyDown={handleCheckKey}
+        role="checkbox"
+        aria-checked={task.status === 'Done'}
+        aria-label={task.status === 'Done' ? `Mark ${task.title} as not done` : `Mark ${task.title} as done`}
         style={{ width: 20, height: 20, border: "2px solid rgba(255,255,255,0.15)", borderRadius: "50%", background: task.status === 'Done' ? "var(--green)" : "transparent" }}
       >
         {task.status === 'Done' ? '✓' : ''}
-      </div>
+      </button>
 
       <div style={{ flex: 1, minWidth: 0, paddingLeft: 4 }}>
         <div

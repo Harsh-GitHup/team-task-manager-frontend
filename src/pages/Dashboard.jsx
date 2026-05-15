@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
-import { io } from "socket.io-client";
+import { useNotifications } from "../context/useNotifications";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
@@ -36,6 +36,7 @@ StatCard.propTypes = {
 // ─────────────────────────────────────────────────────────
 function Dashboard() {
   const { user } = useContext(AuthContext);
+  const { socket } = useNotifications();
 
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -88,20 +89,31 @@ function Dashboard() {
       }
     };
     load();
+  }, []);
 
-    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-    console.debug("[Dashboard] resolved socketUrl:", socketUrl);
-    const socket = io(socketUrl, {
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-      transports: ['websocket']
-    });
-    socket.on("refresh_tasks", fetchTasks);
-    socket.on("refresh_projects", fetchProjects);
-    return () => socket.disconnect();
-  }, [fetchTasks, fetchProjects]);
+  useEffect(() => {
+    if (!socket) {
+      return;
+    }
+    const handleRefreshTask = () => fetchTasks();
+    const handleRefreshProjects = () => fetchProjects();
+
+    try {
+      socket.on("refresh_tasks", handleRefreshTask);
+      socket.on("refresh_projects", handleRefreshProjects);
+    } catch (err) {
+      console.warn('Failed to attach socket handlers in Dashboard', err);
+    }
+
+    return () => {
+      try {
+        socket.off("refresh_tasks", handleRefreshTask);
+        socket.off("refresh_projects", handleRefreshProjects);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    };
+  }, [fetchTasks, fetchProjects, socket]);
 
   // Derived stats
   const today = new Date().toISOString().split("T")[0];

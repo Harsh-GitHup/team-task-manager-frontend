@@ -1,112 +1,178 @@
-import { createContext, useState, useEffect, useContext, useMemo, useRef } from 'react';
-import PropTypes from "prop-types";
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
+import { NotificationContext } from './notificationContext';
+import { getApiBaseUrl } from '../config/runtime';
 
-const NotificationContext = createContext();
+let sharedSocket = null;
 
-export const useNotifications = () => useContext(NotificationContext);
-
-export const NotificationProvider = ({ children }) => {
-  const { user, setUserRole } = useContext(AuthContext);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState([]); // List of notification objects
-  const [chatNotifications, setChatNotifications] = useState({});
-  const [socket, setSocket] = useState(null);
+export function NotificationProvider({ children }) {
+  const authCtx = useContext(AuthContext) || {};
+  const user = authCtx.user;
+  const setUserRole = authCtx.setUserRole;
   const socketRef = useRef(null);
-  const isInitialized = useRef(false);
+  const [socket, setSocket] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [chatNotifications, setChatNotifications] = useState({});
 
   useEffect(() => {
     if (!user) {
-      if (isInitialized.current) {
-        setNotifications([]);
+      // avoid sync setState in effect body — schedule reset next tick
+      requestAnimationFrame(() => {
+        setSocket(null);
         setUnreadCount(0);
+        setNotifications([]);
         setChatNotifications({});
-      }
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-      isInitialized.current = false;
+      });
       return;
     }
 
-    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-    console.debug("[NotificationContext] resolved socketUrl:", socketUrl);
-    const newSocket = io(socketUrl, {
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-      transports: ['websocket']
-    });
-    socketRef.current = newSocket;
-    queueMicrotask(() => setSocket(newSocket));
+    const socketUrl = getApiBaseUrl();
+    console.debug('[NotificationContext] resolved socketUrl:', socketUrl);
 
-    // Join company room for global notifications
-    if (user.company_id) {
-      newSocket.emit("join_company", user.company_id);
+    try {
+      if (!sharedSocket) {
+        sharedSocket = io(socketUrl, {
+          autoConnect: false,
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+        });
+      }
+    } catch (err) {
+      // Fail gracefully if socket initialization fails
+      console.warn('[NotificationContext] socket init failed', err);
+      sharedSocket = null;
     }
 
-    // Handle new chat messages
-    newSocket.on("new_message", (message) => {
-      // Don't notify for own messages
+    const activeSocket = sharedSocket;
+    socketRef.current = activeSocket;
+
+    const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+    activeSocket.auth = token ? { token } : {};
+
+    const handleConnect = () => {
+      if (user?.company_id) {
+        try {
+          activeSocket.emit('join_company', user.company_id);
+        } catch (err) {
+          console.warn('join_company emit failed', err);
+        }
+      }
+    };
+
+    const handleConnectError = (err) => {
+      console.warn('[NotificationContext] socket connect_error', err);
+    };
+
+    const handleNewMessage = (message) => {
+      if (!message) return;
       if (String(message.sender_id) === String(user.id)) return;
 
-      const currentPath = globalThis.location.pathname;
+      const senderName =
+        message.name ||
+        message.sender_name ||
+        message.user_name ||
+        message.senderName ||
+        message.email ||
+        message.sender_email ||
+        message.senderEmail ||
+        'someone';
+
+      const currentPath = globalThis.location?.pathname || '';
       const isChatPage = currentPath.startsWith('/chat');
 
-      if (!isChatPage || !currentPath.includes(message.team_id)) {
+      if (!isChatPage || !currentPath.includes(String(message.team_id))) {
         const notif = {
           id: Date.now() + Math.random(),
           type: 'message',
-          title: `New message from ${message.name || message.email}`,
+          title: `New message from ${senderName}`,
           content: message.message,
           team_id: message.team_id,
           created_at: new Date().toISOString(),
-          link: '/chat'
+          link: '/chat',
         };
 
-        setNotifications(prev => [notif, ...prev].slice(0, 20));
-        setUnreadCount(prev => prev + 1);
-
-        // Track per-team count for Sidebar/Chat badges
-        setChatNotifications(prev => ({
+        setNotifications((prev) => [notif, ...prev].slice(0, 20));
+        setUnreadCount((prev) => prev + 1);
+        setChatNotifications((prev) => ({
           ...prev,
-          [message.team_id]: (prev[message.team_id] || 0) + 1
+          [message.team_id]: (prev[message.team_id] || 0) + 1,
         }));
       }
-    });
+    };
 
-    // Handle activity notifications (Project/Task updates)
-    newSocket.on("new_notification", (notif) => {
-      // Don't notify for own actions
-      if (String(notif.user_id) === String(user.id)) return;
+    const handleNewNotification = (notif) => {
+      if (!notif) return;
+      if (notif?.user_id && String(notif.user_id) === String(user.id)) return;
 
-      const fullNotif = {
-        id: Date.now() + Math.random(),
-        ...notif
-      };
-      setNotifications(prev => [fullNotif, ...prev].slice(0, 20));
-      setUnreadCount(prev => prev + 1);
-    });
+      setNotifications((prev) => [
+        { id: Date.now() + Math.random(), ...notif },
+        ...prev,
+      ].slice(0, 20));
+      setUnreadCount((prev) => prev + 1);
+    };
 
-    // Handle real-time role changes
-    newSocket.on("role_changed", (data) => {
-      // If this user's role was changed, update their auth context
-      if (String(data.user_id) === String(user.id)) {
-        if (setUserRole && typeof setUserRole === 'function') {
-          setUserRole(data.new_role);
-        }
+    const handleRoleChanged = (data) => {
+      if (!data) return;
+      if (String(data.user_id) === String(user.id) && typeof setUserRole === 'function') {
+        setUserRole(data.new_role);
       }
+    };
+
+    if (activeSocket) {
+      activeSocket.off('connect', handleConnect);
+      activeSocket.off('connect_error', handleConnectError);
+      activeSocket.off('new_message', handleNewMessage);
+      activeSocket.off('new_notification', handleNewNotification);
+      activeSocket.off('role_changed', handleRoleChanged);
+
+      activeSocket.on('connect', handleConnect);
+      activeSocket.on('connect_error', handleConnectError);
+      activeSocket.on('new_message', handleNewMessage);
+      activeSocket.on('new_notification', handleNewNotification);
+      activeSocket.on('role_changed', handleRoleChanged);
+    }
+
+    if (activeSocket) {
+      if (!activeSocket.connected && !activeSocket.connecting) {
+        try {
+          activeSocket.connect();
+        } catch (err) {
+          console.warn('[NotificationContext] socket connect failed', err);
+        }
+      } else if (activeSocket.connected) {
+        handleConnect();
+      }
+    }
+
+    // schedule setState to avoid "setState in effect" lint error
+    requestAnimationFrame(() => {
+      setSocket(activeSocket);
     });
 
     return () => {
-      newSocket.disconnect();
-      if (socketRef.current === newSocket) {
-        socketRef.current = null;
+      if (activeSocket) {
+        activeSocket.off('connect', handleConnect);
+        activeSocket.off('connect_error', handleConnectError);
+        activeSocket.off('new_message', handleNewMessage);
+        activeSocket.off('new_notification', handleNewNotification);
+        activeSocket.off('role_changed', handleRoleChanged);
       }
-      setSocket(currentSocket => (currentSocket === newSocket ? null : currentSocket));
+      // If user logged out, clear local socket auth so next login re-inits
+      if (!user && sharedSocket?.disconnect) {
+        try {
+          sharedSocket.auth = {};
+        } catch {
+          /* ignore */
+        }
+      }
     };
+    //// eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, setUserRole]);
 
   const clearAll = () => {
@@ -120,31 +186,31 @@ export const NotificationProvider = ({ children }) => {
   };
 
   const clearTeamUnread = (teamId) => {
-    setChatNotifications(prev => {
-      const newState = { ...prev };
-      delete newState[teamId];
-      return newState;
+    setChatNotifications((prev) => {
+      const next = { ...prev };
+      delete next[teamId];
+      return next;
     });
-    // Also remove from general notification list if they are messages for this team
-    setNotifications(prev => prev.filter(n => !(n.type === 'message' && String(n.team_id) === String(teamId))));
+    setNotifications((prev) => prev.filter((n) => !(n.type === 'message' && String(n.team_id) === String(teamId))));
   };
 
-  const value = useMemo(() => ({
-    socket,
-    unreadCount,
-    notifications,
-    chatNotifications,
-    clearAll,
-    clearUnread,
-    clearTeamUnread
-  }), [socket, unreadCount, notifications, chatNotifications]);
-
-  return (
-    <NotificationContext.Provider value={value}>
-      {children}
-    </NotificationContext.Provider>
+  const value = useMemo(
+    () => ({
+      socket,
+      unreadCount,
+      notifications,
+      chatNotifications,
+      clearAll,
+      clearUnread,
+      clearTeamUnread,
+      setNotifications,
+      setUnreadCount,
+    }),
+    [socket, unreadCount, notifications, chatNotifications],
   );
-};
+
+  return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
+}
 
 NotificationProvider.propTypes = {
   children: PropTypes.node.isRequired,

@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useCallback } from "react";
 import API from "../api";
 import { AuthContext } from "../context/AuthContext";
-import { io } from "socket.io-client";
+import { useNotifications } from "../context/useNotifications";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
 import EmptyState from "../components/EmptyState";
@@ -21,6 +21,7 @@ const GROUPS = [
 
 function Tasks() {
   const { user } = useContext(AuthContext);
+  const { socket } = useNotifications();
 
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -74,19 +75,27 @@ function Tasks() {
       }
     };
     loadMetadata();
+  }, []);
 
-    const socketUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-    console.debug("[Tasks] resolved socketUrl:", socketUrl);
-    const socket = io(socketUrl, {
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-      transports: ['websocket']
-    });
-    socket.on("refresh_tasks", () => fetchTasks());
-    return () => socket.disconnect();
-  }, [fetchTasks]);
+  useEffect(() => {
+    if (!socket) {
+      return;
+    }
+    const handleRefresh = () => fetchTasks();
+    try {
+      socket.on("refresh_tasks", handleRefresh);
+    } catch (err) {
+      console.warn('Failed to attach socket handler in Tasks', err);
+    }
+
+    return () => {
+      try {
+        socket.off("refresh_tasks", handleRefresh);
+      } catch {
+        /* ignore cleanup errors */
+      }
+    };
+  }, [fetchTasks, socket]);
 
   useEffect(() => {
     // call fetchTasks asynchronously to avoid synchronous setState within effect
@@ -117,7 +126,13 @@ function Tasks() {
       closeModal();
       fetchTasks();
     } catch (err) {
-      showToast("error", editingTask ? "Update failed" : "Creation failed", err.response?.data?.error || "Please try again.");
+      console.error('saveTask error', err);
+      const status = err?.response?.status;
+      const message = err?.response?.data?.error || err?.message || 'Please try again.';
+      const statusSuffix = status ? ` (${status})` : "";
+      const actionTitle = editingTask ? "Update failed" : "Creation failed";
+      const toastTitle = actionTitle + statusSuffix;
+      showToast("error", toastTitle, message);
     }
   };
 
@@ -204,17 +219,23 @@ function Tasks() {
   }
 
   return (
-    <PageShell title="Tasks" actions={topbarActions}>
-      {content}
+    <PageShell
+      title="Tasks"
+      actions={topbarActions}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {content}
+      </div>
 
+      {/* Task edit modal */}
       <Modal open={taskModalOpen} onClose={closeModal} title={editingTask ? "Edit Task" : "New Task"}>
         <TaskForm
           initialData={editingTask}
           projects={projects}
           users={users.filter((u) => u.role !== "admin")}
           submitLabel={editingTask ? "Update Task" : "Create Task"}
-          showProjectSelect={isAdmin}
-          showAssigneeSelect={isAdmin}
+          showProjectSelect={user?.role === "admin"}
+          showAssigneeSelect={user?.role === "admin"}
           showStatusSelect
           onSubmit={saveTask}
           onCancel={closeModal}
