@@ -9,7 +9,7 @@ import PropTypes from "prop-types";
  * `.main > .topbar + .content` layout so pages don't repeat that boilerplate.
  */
 export default function PageShell({ title, actions, children, noPad = false }) {
-  const { unreadCount, notifications, clearAll, clearUnread } = useNotifications();
+  const { unreadCount, notifications, clearAll, markVisibleNotificationsRead } = useNotifications();
   const { toggleSidebar } = useUI();
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
@@ -52,8 +52,10 @@ export default function PageShell({ title, actions, children, noPad = false }) {
   }, [showNotifs]);
 
   const handleToggleNotifs = () => {
-    if (!showNotifs) clearUnread();
-    setShowNotifs(!showNotifs);
+    if (!showNotifs) {
+      markVisibleNotificationsRead(notifications.map((notification) => notification.id));
+    }
+    setShowNotifs((prev) => !prev);
   };
 
   const handleNotifKeyDown = (e) => {

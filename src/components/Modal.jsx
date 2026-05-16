@@ -13,6 +13,12 @@ import PropTypes from "prop-types";
 export default function Modal({ open, onClose, title, children, width }) {
   // keyboard handler for accessibility
   const handleBackdropKey = (e) => {
+    // If the key event originated from an input-like element, ignore it
+    const target = e.target;
+    const tag = target?.tagName;
+    const isInputLike = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable;
+    if (isInputLike) return;
+
     if (e.key === 'Escape') {
       onClose();
     } else if (e.key === 'Enter' || e.key === ' ') {
