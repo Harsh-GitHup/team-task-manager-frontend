@@ -21,11 +21,7 @@ export const UIProvider = ({ children }) => {
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      closeSidebar();
-    }, 0);
-
-    return () => clearTimeout(timeoutId);
+    queueMicrotask(closeSidebar);
   }, [location.pathname, closeSidebar]);
 
   return (

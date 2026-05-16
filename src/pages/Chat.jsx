@@ -5,23 +5,57 @@ import { useNotifications } from "../context/useNotifications";
 import PageShell from "../components/PageShell";
 import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
+import LoadingState from "../components/LoadingState";
 
 function Chat() {
   const { user } = useContext(AuthContext);
   const { chatNotifications, clearTeamUnread, socket } = useNotifications();
   const [teams, setTeams] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState(null);
+  const [compactSidebar, setCompactSidebar] = useState(false);
+  const [sidebarPreferenceReady, setSidebarPreferenceReady] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
+  const sidebarStorageKey = user?.id ? `chat-sidebar-compact:${user.id}` : null;
+
   const scrollRef = useRef(null);
   const shouldScrollToBottomRef = useRef(false);
   const isNearBottomRef = useRef(true);
 
   const showToast = (type, title, message) => setToast({ type, title, message });
+
+  useEffect(() => {
+    if (!sidebarStorageKey) return;
+
+    const frameId = requestAnimationFrame(() => {
+      try {
+        const savedValue = localStorage.getItem(sidebarStorageKey);
+        if (savedValue !== null) {
+          setCompactSidebar(savedValue === "true");
+        }
+      } catch {
+        /* ignore storage read errors */
+      } finally {
+        setSidebarPreferenceReady(true);
+      }
+    });
+
+    return () => cancelAnimationFrame(frameId);
+  }, [sidebarStorageKey]);
+
+  useEffect(() => {
+    if (!sidebarPreferenceReady || !sidebarStorageKey) return;
+
+    try {
+      localStorage.setItem(sidebarStorageKey, String(compactSidebar));
+    } catch {
+      /* ignore storage write errors */
+    }
+  }, [compactSidebar, sidebarPreferenceReady, sidebarStorageKey]);
 
   const selectTeam = (team) => {
     shouldScrollToBottomRef.current = true;
@@ -34,13 +68,6 @@ function Chat() {
     if (prevMessages.some((m) => m.id === msg.id)) return prevMessages;
     return [...prevMessages, msg];
   };
-
-  const sortMessagesByTime = (list) =>
-    [...list].sort((left, right) => {
-      const leftTime = new Date(left.created_at || 0).getTime();
-      const rightTime = new Date(right.created_at || 0).getTime();
-      return leftTime - rightTime;
-    });
 
   // Load teams
   useEffect(() => {
@@ -67,7 +94,7 @@ function Chat() {
 
     const handleNewMessage = (msg) => {
       if (selectedTeam && String(msg.team_id) === String(selectedTeam.id)) {
-        setMessages((prev) => sortMessagesByTime(addUniqueMessage(prev, msg)));
+        setMessages((prev) => addUniqueMessage(prev, msg));
         clearTeamUnread(selectedTeam.id);
       }
     };
@@ -97,7 +124,7 @@ function Chat() {
       try {
         const res = await API.get(`/chat/${selectedTeam.id}`);
         if (!cancelled) {
-          setMessages(sortMessagesByTime(res.data || []));
+          setMessages(res.data || []);
           clearTeamUnread(selectedTeam.id);
         }
       } catch {
@@ -127,10 +154,16 @@ function Chat() {
   // Keep the view pinned only when the user is already near the bottom,
   // or when a team is first selected.
   useEffect(() => {
-    if (scrollRef.current && (shouldScrollToBottomRef.current || isNearBottomRef.current)) {
+    if (!scrollRef.current || !(shouldScrollToBottomRef.current || isNearBottomRef.current)) return;
+
+    const frameId = requestAnimationFrame(() => {
+      if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
       shouldScrollToBottomRef.current = false;
-    }
+    });
+
+    return () => cancelAnimationFrame(frameId);
   }, [messages]);
 
   const handleChatScroll = () => {
@@ -161,31 +194,44 @@ function Chat() {
       <div className="chat-container">
 
         {/* Left Sidebar: Teams */}
-        <div className="chat-sidebar">
-          <div className="chat-sidebar-header">Teams</div>
+        <div className={`chat-sidebar ${compactSidebar ? 'compact' : ''}`}>
+          <div className="chat-sidebar-header">
+            <span>Teams</span>
+            <button
+              type="button"
+              className="chat-sidebar-toggle"
+              aria-label={compactSidebar ? 'Show team names' : 'Hide team names'}
+              aria-pressed={compactSidebar}
+              onClick={() => setCompactSidebar((prev) => !prev)}
+            >
+              ☰
+            </button>
+          </div>
           <div className="chat-list">
             {teams.map(t => (
-              <div
+              <button
                 key={t.id}
                 className={`chat-list-item ${selectedTeam?.id === t.id ? 'active' : ''}`}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 12, padding: "8px 12px", borderRadius: 6 }}
                 onClick={() => selectTeam(t)}
-                role="button"
-                tabIndex={0}
+                type="button"
               >
                 <div
                   className="member-avatar"
-                  style={{ width: 36, height: 36, background: "rgba(124,106,255,0.15)", color: "var(--accent2)", fontSize: 14 }}
+                  style={{ width: 34, height: 34, background: "rgba(124,106,255,0.15)", color: "var(--accent2)", fontSize: 14 }}
                 >
                   {t.name.slice(0, 2).toUpperCase()}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{t.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--text3)" }}>{t.admin_name || 'Team Chat'}</div>
+                <div className={`member-info ${compactSidebar ? 'is-hidden' : ''}`} style={{ textAlign: 'left' }}>
+                  <div className="member-name" style={{ fontSize: 14, fontWeight: 600 }}>{t.name}</div>
+                  <div className="member-email" style={{ fontSize: 11, color: "var(--text3)" }}>
+                    {t.admin_name || 'Team Chat'}
+                  </div>
                 </div>
                 {(chatNotifications[t.id] ?? 0) > 0 && (
                   <span className="sidebar-badge">{chatNotifications[t.id]}</span>
                 )}
-              </div>
+              </button>
             ))}
             {teams.length === 0 && !loading && (
               <div style={{ padding: 20, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
