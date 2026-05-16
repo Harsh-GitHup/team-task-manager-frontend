@@ -1,179 +1,219 @@
-import { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import PropTypes from 'prop-types';
+import { useState, useEffect, useContext, useMemo, useRef, useCallback } from 'react';
+import PropTypes from "prop-types";
 import { io } from 'socket.io-client';
 import { AuthContext } from './AuthContext';
-import { NotificationContext } from './notificationContext';
 import { getApiBaseUrl } from '../config/runtime';
+import { NotificationContext } from './notificationContext';
 
 let sharedSocket = null;
 
-export function NotificationProvider({ children }) {
-  const authCtx = useContext(AuthContext) || {};
-  const user = authCtx.user;
-  const setUserRole = authCtx.setUserRole;
-  const socketRef = useRef(null);
-  const [socket, setSocket] = useState(null);
+export const NotificationProvider = ({ children }) => {
+  const { user, setUserRole } = useContext(AuthContext);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState([]); // List of notification objects
   const [chatNotifications, setChatNotifications] = useState({});
+  const [socket, setSocket] = useState(null);
+  const socketRef = useRef(null);
+  const isInitialized = useRef(false);
+  const messageFrameRef = useRef(null);
+  const notificationFrameRef = useRef(null);
+  const pendingMessagesRef = useRef([]);
+  const pendingNotificationsRef = useRef([]);
+  const seenEventKeysRef = useRef(new Set());
+
+  const getMessageKey = (message) => {
+    if (!message) return null;
+    return `message:${message.id ?? message.team_id ?? ''}:${message.sender_id ?? ''}:${message.created_at ?? ''}`;
+  };
+
+  const getNotificationKey = (notif) => {
+    if (!notif) return null;
+    return `notification:${notif.id ?? notif.type ?? ''}:${notif.user_id ?? ''}:${notif.team_id ?? ''}:${notif.created_at ?? ''}`;
+  };
+
+  const rememberEventKey = (key) => {
+    if (!key) return false;
+    if (seenEventKeysRef.current.has(key)) return false;
+    seenEventKeysRef.current.add(key);
+    return true;
+  };
+
+  const flushPendingMessages = useCallback(() => {
+    messageFrameRef.current = null;
+    const pendingMessages = pendingMessagesRef.current;
+    if (pendingMessages.length === 0) return;
+    pendingMessagesRef.current = [];
+
+    const currentPath = globalThis.location?.pathname || '';
+    const isChatPage = currentPath.startsWith('/chat');
+    const acceptedMessages = [];
+
+    for (const message of pendingMessages) {
+      if (String(message.sender_id) === String(user.id)) continue;
+
+      if (isChatPage && currentPath.includes(String(message.team_id))) continue;
+
+      const messageKey = getMessageKey(message);
+      if (!rememberEventKey(messageKey)) continue;
+
+      acceptedMessages.push({
+        id: message.id ?? Date.now() + Math.random(),
+        type: 'message',
+        title: `New message from ${message.name || message.email || 'someone'}`,
+        content: message.message,
+        team_id: message.team_id,
+        created_at: new Date().toISOString(),
+        link: '/chat',
+      });
+    }
+
+    if (acceptedMessages.length === 0) return;
+
+    setNotifications((prev) => [...acceptedMessages, ...prev].slice(0, 20));
+    setUnreadCount((prev) => prev + acceptedMessages.length);
+
+    const teamIncrements = acceptedMessages.reduce((acc, item) => {
+      const teamId = String(item.team_id);
+      acc[teamId] = (acc[teamId] || 0) + 1;
+      return acc;
+    }, {});
+
+    setChatNotifications((prev) => {
+      const next = { ...prev };
+      for (const [teamId, increment] of Object.entries(teamIncrements)) {
+        next[teamId] = (next[teamId] || 0) + increment;
+      }
+      return next;
+    });
+  }, [user]);
+
+  const flushPendingNotifications = useCallback(() => {
+    notificationFrameRef.current = null;
+    const pendingNotifications = pendingNotificationsRef.current;
+    if (pendingNotifications.length === 0) return;
+    pendingNotificationsRef.current = [];
+
+    const acceptedNotifications = [];
+    for (const notif of pendingNotifications) {
+      const notificationKey = getNotificationKey(notif);
+      if (!rememberEventKey(notificationKey)) continue;
+      acceptedNotifications.push({
+        id: notif.id ?? Date.now() + Math.random(),
+        ...notif,
+      });
+    }
+
+    if (acceptedNotifications.length === 0) return;
+
+    setNotifications((prev) => [...acceptedNotifications, ...prev].slice(0, 20));
+    setUnreadCount((prev) => prev + acceptedNotifications.length);
+  }, []);
 
   useEffect(() => {
     if (!user) {
-      // avoid sync setState in effect body — schedule reset next tick
-      requestAnimationFrame(() => {
-        setSocket(null);
-        setUnreadCount(0);
+      if (isInitialized.current) {
         setNotifications([]);
+        setUnreadCount(0);
         setChatNotifications({});
-      });
+      }
+      if (sharedSocket) {
+        sharedSocket.disconnect();
+        sharedSocket = null;
+        socketRef.current = null;
+      }
+      isInitialized.current = false;
+      seenEventKeysRef.current.clear();
+      queueMicrotask(() => setSocket(null));
       return;
     }
 
     const socketUrl = getApiBaseUrl();
-    console.debug('[NotificationContext] resolved socketUrl:', socketUrl);
-
-    try {
-      if (!sharedSocket) {
-        sharedSocket = io(socketUrl, {
-          autoConnect: false,
-          transports: ['websocket', 'polling'],
-          reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          reconnectionDelayMax: 5000,
-        });
-      }
-    } catch (err) {
-      // Fail gracefully if socket initialization fails
-      console.warn('[NotificationContext] socket init failed', err);
-      sharedSocket = null;
+    console.debug("[NotificationContext] resolved socketUrl:", socketUrl);
+    if (!sharedSocket) {
+      sharedSocket = io(socketUrl, {
+        autoConnect: false,
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        reconnectionAttempts: 5,
+        transports: ['websocket', 'polling']
+      });
     }
 
-    const activeSocket = sharedSocket;
-    socketRef.current = activeSocket;
+    const newSocket = sharedSocket;
+    socketRef.current = newSocket;
+    queueMicrotask(() => setSocket(newSocket));
 
     const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
-    activeSocket.auth = token ? { token } : {};
+    newSocket.auth = token ? { token } : {};
 
     const handleConnect = () => {
       if (user?.company_id) {
-        try {
-          activeSocket.emit('join_company', user.company_id);
-        } catch (err) {
-          console.warn('join_company emit failed', err);
-        }
+        newSocket.emit('join_company', user.company_id);
       }
     };
 
-    const handleConnectError = (err) => {
-      console.warn('[NotificationContext] socket connect_error', err);
-    };
-
     const handleNewMessage = (message) => {
-      if (!message) return;
-      if (String(message.sender_id) === String(user.id)) return;
-
-      const senderName =
-        message.name ||
-        message.sender_name ||
-        message.user_name ||
-        message.senderName ||
-        message.email ||
-        message.sender_email ||
-        message.senderEmail ||
-        'someone';
-
-      const currentPath = globalThis.location?.pathname || '';
-      const isChatPage = currentPath.startsWith('/chat');
-
-      if (!isChatPage || !currentPath.includes(String(message.team_id))) {
-        const notif = {
-          id: Date.now() + Math.random(),
-          type: 'message',
-          title: `New message from ${senderName}`,
-          content: message.message,
-          team_id: message.team_id,
-          created_at: new Date().toISOString(),
-          link: '/chat',
-        };
-
-        setNotifications((prev) => [notif, ...prev].slice(0, 20));
-        setUnreadCount((prev) => prev + 1);
-        setChatNotifications((prev) => ({
-          ...prev,
-          [message.team_id]: (prev[message.team_id] || 0) + 1,
-        }));
+      pendingMessagesRef.current.push(message);
+      if (messageFrameRef.current === null) {
+        messageFrameRef.current = requestAnimationFrame(flushPendingMessages);
       }
     };
 
     const handleNewNotification = (notif) => {
-      if (!notif) return;
-      if (notif?.user_id && String(notif.user_id) === String(user.id)) return;
+      if (String(notif.user_id) === String(user.id)) return;
 
-      setNotifications((prev) => [
-        { id: Date.now() + Math.random(), ...notif },
-        ...prev,
-      ].slice(0, 20));
-      setUnreadCount((prev) => prev + 1);
+      pendingNotificationsRef.current.push(notif);
+      if (notificationFrameRef.current === null) {
+        notificationFrameRef.current = requestAnimationFrame(flushPendingNotifications);
+      }
     };
 
     const handleRoleChanged = (data) => {
-      if (!data) return;
-      if (String(data.user_id) === String(user.id) && typeof setUserRole === 'function') {
-        setUserRole(data.new_role);
+      if (String(data.user_id) === String(user.id)) {
+        if (setUserRole && typeof setUserRole === 'function') {
+          setUserRole(data.new_role);
+        }
       }
     };
 
-    if (activeSocket) {
-      activeSocket.off('connect', handleConnect);
-      activeSocket.off('connect_error', handleConnectError);
-      activeSocket.off('new_message', handleNewMessage);
-      activeSocket.off('new_notification', handleNewNotification);
-      activeSocket.off('role_changed', handleRoleChanged);
+    newSocket.off('connect', handleConnect);
+    newSocket.off('new_message', handleNewMessage);
+    newSocket.off('new_notification', handleNewNotification);
+    newSocket.off('role_changed', handleRoleChanged);
 
-      activeSocket.on('connect', handleConnect);
-      activeSocket.on('connect_error', handleConnectError);
-      activeSocket.on('new_message', handleNewMessage);
-      activeSocket.on('new_notification', handleNewNotification);
-      activeSocket.on('role_changed', handleRoleChanged);
+    newSocket.on('connect', handleConnect);
+    newSocket.on('new_message', handleNewMessage);
+    newSocket.on('new_notification', handleNewNotification);
+    newSocket.on('role_changed', handleRoleChanged);
+
+    if (!newSocket.connected && !newSocket.connecting) {
+      newSocket.connect();
+    } else if (newSocket.connected) {
+      handleConnect();
     }
-
-    if (activeSocket) {
-      if (!activeSocket.connected && !activeSocket.connecting) {
-        try {
-          activeSocket.connect();
-        } catch (err) {
-          console.warn('[NotificationContext] socket connect failed', err);
-        }
-      } else if (activeSocket.connected) {
-        handleConnect();
-      }
-    }
-
-    // schedule setState to avoid "setState in effect" lint error
-    requestAnimationFrame(() => {
-      setSocket(activeSocket);
-    });
 
     return () => {
-      if (activeSocket) {
-        activeSocket.off('connect', handleConnect);
-        activeSocket.off('connect_error', handleConnectError);
-        activeSocket.off('new_message', handleNewMessage);
-        activeSocket.off('new_notification', handleNewNotification);
-        activeSocket.off('role_changed', handleRoleChanged);
+      newSocket.off('connect', handleConnect);
+      newSocket.off('new_message', handleNewMessage);
+      newSocket.off('new_notification', handleNewNotification);
+      newSocket.off('role_changed', handleRoleChanged);
+      if (messageFrameRef.current !== null) {
+        cancelAnimationFrame(messageFrameRef.current);
+        messageFrameRef.current = null;
       }
-      // If user logged out, clear local socket auth so next login re-inits
-      if (!user && sharedSocket?.disconnect) {
-        try {
-          sharedSocket.auth = {};
-        } catch {
-          /* ignore */
-        }
+      if (notificationFrameRef.current !== null) {
+        cancelAnimationFrame(notificationFrameRef.current);
+        notificationFrameRef.current = null;
       }
+      pendingMessagesRef.current = [];
+      pendingNotificationsRef.current = [];
+      if (socketRef.current === newSocket) {
+        socketRef.current = null;
+      }
+      setSocket(currentSocket => (currentSocket === newSocket ? null : currentSocket));
     };
-    //// eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, setUserRole]);
+  }, [user, setUserRole, flushPendingMessages, flushPendingNotifications]);
 
   const clearAll = () => {
     setNotifications([]);
@@ -186,31 +226,31 @@ export function NotificationProvider({ children }) {
   };
 
   const clearTeamUnread = (teamId) => {
-    setChatNotifications((prev) => {
-      const next = { ...prev };
-      delete next[teamId];
-      return next;
+    setChatNotifications(prev => {
+      const newState = { ...prev };
+      delete newState[teamId];
+      return newState;
     });
-    setNotifications((prev) => prev.filter((n) => !(n.type === 'message' && String(n.team_id) === String(teamId))));
+    // Also remove from general notification list if they are messages for this team
+    setNotifications(prev => prev.filter(n => !(n.type === 'message' && String(n.team_id) === String(teamId))));
   };
 
-  const value = useMemo(
-    () => ({
-      socket,
-      unreadCount,
-      notifications,
-      chatNotifications,
-      clearAll,
-      clearUnread,
-      clearTeamUnread,
-      setNotifications,
-      setUnreadCount,
-    }),
-    [socket, unreadCount, notifications, chatNotifications],
-  );
+  const value = useMemo(() => ({
+    socket,
+    unreadCount,
+    notifications,
+    chatNotifications,
+    clearAll,
+    clearUnread,
+    clearTeamUnread
+  }), [socket, unreadCount, notifications, chatNotifications]);
 
-  return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
-}
+  return (
+    <NotificationContext.Provider value={value}>
+      {children}
+    </NotificationContext.Provider>
+  );
+};
 
 NotificationProvider.propTypes = {
   children: PropTypes.node.isRequired,

@@ -100,7 +100,7 @@ function Chat() {
     };
 
     try {
-    socket.on("new_message", handleNewMessage);
+      socket.on("new_message", handleNewMessage);
     } catch (err) {
       console.warn('Failed to attach new_message handler', err);
     }
@@ -158,7 +158,7 @@ function Chat() {
 
     const frameId = requestAnimationFrame(() => {
       if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       }
       shouldScrollToBottomRef.current = false;
     });
@@ -188,6 +188,37 @@ function Chat() {
       showToast("error", actionTitle + statusSuffix, message);
     }
   };
+
+  let messageContent;
+  if (loadingMessages) {
+    messageContent = <LoadingState label="Loading messages" />;
+  } else if (messages.length === 0) {
+    messageContent = (
+      <EmptyState
+        icon="💬"
+        text={`Welcome to ${selectedTeam?.name || "this team"} chat!`}
+      />
+    );
+  } else {
+    messageContent = messages.map((m) => {
+      const isMine = String(m.sender_id) === String(user?.id);
+      return (
+        <div key={m.id} className={`message-row ${isMine ? 'mine' : 'others'}`}>
+          {!isMine && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent2)", marginBottom: 4, marginLeft: 4 }}>
+              {m.name || m.email}
+            </div>
+          )}
+          <div className="message-bubble">
+            {m.message}
+          </div>
+          <div className="message-info">
+            {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </div>
+        </div>
+      );
+    });
+  }
 
   return (
     <PageShell title="Team Chat" noPad>
@@ -246,28 +277,7 @@ function Chat() {
           {selectedTeam ? (
             <>
               <div className="chat-messages" ref={scrollRef} onScroll={handleChatScroll}>
-                {messages.length === 0 ? (
-                  <EmptyState icon="💬" text={`Welcome to ${selectedTeam.name} chat!`} />
-                ) : (
-                  [...messages].reverse().map((m) => {
-                    const isMine = String(m.sender_id) === String(user?.id);
-                    return (
-                      <div key={m.id} className={`message-row ${isMine ? 'mine' : 'others'}`}>
-                        {!isMine && (
-                          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--accent2)", marginBottom: 4, marginLeft: 4 }}>
-                            {m.name || m.email}
-                          </div>
-                        )}
-                        <div className="message-bubble">
-                          {m.message}
-                        </div>
-                        <div className="message-info">
-                          {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
+                {messageContent}
               </div>
 
               <div className="chat-footer">
