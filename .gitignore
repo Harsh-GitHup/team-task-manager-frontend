@@ -26,6 +26,3 @@ dist-ssr
 # Environment variables
 .env
 .env.local
-
-README.txt
-Admin-2.jsx
