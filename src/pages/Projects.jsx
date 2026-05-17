@@ -5,6 +5,7 @@ import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
+import ConfirmDialog from "../components/ConfirmDialog";
 import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
 import LoadingState from "../components/LoadingState";
@@ -95,6 +96,7 @@ function Projects() {
   const [teams, setTeams] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -159,13 +161,16 @@ function Projects() {
     }
   };
 
-  const deleteProject = async (project, e) => {
-    e.stopPropagation();
-    if (!globalThis.confirm(`Delete "${project.title}"? This removes all tasks in the project.`)) return;
+  const openDeleteProject = (project) => setDeleteConfirm(project);
+  const closeDeleteConfirm = () => setDeleteConfirm(null);
+
+  const confirmDeleteProject = async () => {
+    if (!deleteConfirm) return;
     try {
-      await API.delete(`/projects/${project.id}`);
-      showToast("success", "Project deleted", `${project.title} was removed.`);
+      await API.delete(`/projects/${deleteConfirm.id}`);
+      showToast("success", "Project deleted", `${deleteConfirm.title} was removed.`);
       fetchProjects();
+      closeDeleteConfirm();
     } catch (err) {
       showToast("error", "Delete failed", err.response?.data?.error || "Please try again.");
     }
@@ -213,7 +218,7 @@ function Projects() {
                   memberCount={team?.member_count || 0}
                   onClick={() => navigate(`/projects/${p.id}`)}
                   onEdit={canModify(p) ? () => openEdit(p) : undefined}
-                  onDelete={canModify(p) ? (e) => deleteProject(p, e) : undefined}
+                  onDelete={canModify(p) ? () => openDeleteProject(p) : undefined}
                 />
               );
             })}
@@ -292,6 +297,15 @@ function Projects() {
           />
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title="Delete Project"
+        message={deleteConfirm ? <>Delete <strong>{deleteConfirm.title}</strong>? This removes all tasks in the project.</> : ""}
+        confirmLabel="Delete Project"
+        onClose={closeDeleteConfirm}
+        onConfirm={confirmDeleteProject}
+      />
 
       {toast && (
         <div className="toast-stack">

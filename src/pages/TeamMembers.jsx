@@ -6,6 +6,7 @@ import LoadingState from "../components/LoadingState";
 import Toast from "../components/Toast";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
+import ConfirmDialog from "../components/ConfirmDialog";
 import EmptyState from "../components/EmptyState";
 import MemberCard from "../components/MemberCard";
 
@@ -62,6 +63,7 @@ function TeamMembers() {
   const [toast, setToast] = useState(null);
   const [editingMember, setEditingMember] = useState(null);
   const [editingRole, setEditingRole] = useState("member");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const showToast = (type, title, message) => setToast({ type, title, message });
 
@@ -138,11 +140,16 @@ function TeamMembers() {
     }
   };
 
-  const deleteMember = async (member) => {
-    if (!globalThis.confirm(`Remove ${member.name} from this team?`)) return;
+  const openDeleteMember = (member) => setDeleteConfirm(member);
+  const closeDeleteConfirm = () => setDeleteConfirm(null);
+
+  const confirmDeleteMember = async () => {
+    if (!deleteConfirm) return;
+
     try {
-      await API.delete(`/teams/${selectedTeamId}/members/${member.id}`);
-      showToast("success", "Member removed", `${member.name} was removed.`);
+      await API.delete(`/teams/${selectedTeamId}/members/${deleteConfirm.id}`);
+      showToast("success", "Member removed", `${deleteConfirm.name} was removed.`);
+      closeDeleteConfirm();
       await loadMembers(selectedTeamId);
     } catch (err) {
       showToast("error", "Removal failed", err.response?.data?.error || "Please try again.");
@@ -180,7 +187,7 @@ function TeamMembers() {
                 member={member}
                 canEdit={canEdit}
                 onEdit={openEdit}
-                onDelete={deleteMember}
+                onDelete={openDeleteMember}
                 extra={
                   /* Per-member task progress */
                   <div style={{ textAlign: "right", marginRight: 12, minWidth: 120 }}>
@@ -217,6 +224,15 @@ function TeamMembers() {
           <Toast type={toast.type} title={toast.title} message={toast.message} onClose={() => setToast(null)} />
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title="Remove Member"
+        message={deleteConfirm ? <>Remove <strong>{deleteConfirm.name}</strong> from this team?</> : ""}
+        confirmLabel="Remove Member"
+        onClose={closeDeleteConfirm}
+        onConfirm={confirmDeleteMember}
+      />
     </PageShell>
   );
 }

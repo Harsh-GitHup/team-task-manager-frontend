@@ -5,6 +5,7 @@ import API from "../api";
 import { AuthContext } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
+import ConfirmDialog from "../components/ConfirmDialog";
 import EmptyState from "../components/EmptyState";
 import Toast from "../components/Toast";
 import ProjectForm from "../components/ProjectForm";
@@ -192,6 +193,7 @@ function ProjectDetail() {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [toast, setToast] = useState(null);
   const [tab, setTab] = useState("kanban"); // Default to board for drag & drop visibility
 
@@ -284,22 +286,23 @@ function ProjectDetail() {
     }
   };
 
-  const deleteTask = async (task) => {
-    if (!globalThis.confirm(`Delete "${task.title}"?`)) return;
-    try {
-      await API.delete(`/tasks/${task.id}`);
-      showToast("success", "Task deleted", `${task.title} was removed.`);
-      await refreshData();
-    } catch (err) {
-      showToast("error", "Delete failed", err.response?.data?.error || "Please try again.");
-    }
-  };
+  const openDeleteTask = (task) => setDeleteConfirm({ kind: "task", item: task });
+  const openDeleteProject = () => setDeleteConfirm({ kind: "project", item: project });
+  const closeDeleteConfirm = () => setDeleteConfirm(null);
 
-  const deleteProject = async () => {
-    if (!globalThis.confirm("Delete this project and all its tasks?")) return;
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+
     try {
-      await API.delete(`/projects/${id}`);
-      navigate("/projects");
+      if (deleteConfirm.kind === "task") {
+        await API.delete(`/tasks/${deleteConfirm.item.id}`);
+        showToast("success", "Task deleted", `${deleteConfirm.item.title} was removed.`);
+        await refreshData();
+      } else {
+        await API.delete(`/projects/${id}`);
+        navigate("/projects");
+      }
+      closeDeleteConfirm();
     } catch (err) {
       showToast("error", "Delete failed", err.response?.data?.error || "Please try again.");
     }
@@ -369,7 +372,7 @@ function ProjectDetail() {
     <div style={{ display: 'flex', gap: 8 }}>
       {(isAdmin || isHead) && <button className="btn-sm btn-accent" onClick={openTaskCreate}>+ New Task</button>}
       {canModifyProject && <button className="btn-sm btn-ghost" onClick={() => setProjectModalOpen(true)}>Edit</button>}
-      {canModifyProject && <button className="btn-sm btn-danger" onClick={deleteProject}>Delete</button>}
+      {canModifyProject && <button className="btn-sm btn-danger" onClick={openDeleteProject}>Delete</button>}
     </div>
   );
 
@@ -409,7 +412,7 @@ function ProjectDetail() {
             <EmptyState icon="📋" text="No tasks yet. Create your first task!" />
           ) : (
             tasks.map((t) => (
-              <TaskListItem key={t.id} task={t} canModify={canModifyTask(t)} onEdit={openTaskEdit} onDelete={deleteTask} />
+              <TaskListItem key={t.id} task={t} canModify={canModifyTask(t)} onEdit={openTaskEdit} onDelete={openDeleteTask} />
             ))
           )}
         </div>
@@ -438,7 +441,7 @@ function ProjectDetail() {
                   </div>
                 )}
                 {colTasks.map((t) => (
-                  <KanbanCard key={t.id} task={t} canModify={canModifyTask(t)} onEdit={openTaskEdit} onDelete={deleteTask} onDragStart={onDragStart} />
+                  <KanbanCard key={t.id} task={t} canModify={canModifyTask(t)} onEdit={openTaskEdit} onDelete={openDeleteTask} onDragStart={onDragStart} />
                 ))}
               </div>
             );
@@ -474,6 +477,19 @@ function ProjectDetail() {
           onCancel={closeTaskModal}
         />
       </Modal>
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title={deleteConfirm?.kind === "project" ? "Delete Project" : "Delete Task"}
+        message={
+          deleteConfirm?.kind === "project"
+            ? <>Delete <strong>{project?.title}</strong>? This project and all its tasks will be removed.</>
+            : <>Delete <strong>{deleteConfirm?.item?.title}</strong>?</>
+        }
+        confirmLabel={deleteConfirm?.kind === "project" ? "Delete Project" : "Delete Task"}
+        onClose={closeDeleteConfirm}
+        onConfirm={confirmDelete}
+      />
 
       {toast && (
         <div className="toast-stack">

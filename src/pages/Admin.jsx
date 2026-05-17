@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import API from "../api";
 import PageShell from "../components/PageShell";
 import Modal from "../components/Modal";
+import ConfirmDialog from "../components/ConfirmDialog";
 import EmptyState from "../components/EmptyState";
 import MemberCard from "../components/MemberCard";
 import Toast from "../components/Toast";
@@ -65,6 +66,7 @@ function Admin() {
   const [editingTeam, setEditingTeam] = useState(null);
   const [roleModalMember, setRoleModalMember] = useState(null);
   const [roleModalValue, setRoleModalValue] = useState("member");
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -213,12 +215,24 @@ function Admin() {
     } catch (err) { showToast("error", "Team update failed", err.response?.data?.error || "Please try again."); }
   };
 
-  const deleteTeam = async (team) => {
-    if (!globalThis.confirm(`Delete team "${team.name}"?`)) return;
+  const openDeleteTeam = (team) => setDeleteConfirm({ kind: "team", item: team });
+  const openDeleteMember = (member) => setDeleteConfirm({ kind: "member", item: member });
+  const closeDeleteConfirm = () => setDeleteConfirm(null);
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+
     try {
-      await API.delete(`/teams/${team.id}`);
-      showToast("success", "Team deleted", `${team.name} was removed.`);
-      await refreshTeams();
+      if (deleteConfirm.kind === "team") {
+        await API.delete(`/teams/${deleteConfirm.item.id}`);
+        showToast("success", "Team deleted", `${deleteConfirm.item.name} was removed.`);
+        await refreshTeams();
+      } else {
+        await API.delete(`/teams/${selectedTeamId}/members/${deleteConfirm.item.id}`);
+        showToast("success", "Member removed", `${deleteConfirm.item.name} was removed.`);
+        await refreshMembers();
+      }
+      closeDeleteConfirm();
     } catch (err) { showToast("error", "Delete failed", err.response?.data?.error || "Please try again."); }
   };
 
@@ -231,15 +245,6 @@ function Admin() {
       setRoleModalMember(null);
       await refreshMembers();
     } catch (err) { showToast("error", "Update failed", err.response?.data?.error || "Please try again."); }
-  };
-
-  const deleteMember = async (m) => {
-    if (!globalThis.confirm(`Remove ${m.name} from this team?`)) return;
-    try {
-      await API.delete(`/teams/${selectedTeamId}/members/${m.id}`);
-      showToast("success", "Member removed", `${m.name} was removed.`);
-      await refreshMembers();
-    } catch (err) { showToast("error", "Removal failed", err.response?.data?.error || "Please try again."); }
   };
 
   const nonAdmins = users.filter((u) => u.role !== "admin");
@@ -284,7 +289,7 @@ function Admin() {
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button className="icon-btn edit" onClick={() => { setEditingTeam(team); setTeamModalOpen(true); }}>✎</button>
-                    <button className="icon-btn del" onClick={() => deleteTeam(team)}>🗑️</button>
+                    <button className="icon-btn del" onClick={() => openDeleteTeam(team)}>🗑️</button>
                   </div>
                 </div>
               ))
@@ -361,7 +366,7 @@ function Admin() {
                   <EmptyState icon="👥" text="No members in this team yet." compact />
                 ) : (
                   members.map((m) => (
-                    <MemberCard key={m.id} member={m} canEdit onEdit={openRoleModal} onDelete={deleteMember} />
+                    <MemberCard key={m.id} member={m} canEdit onEdit={openRoleModal} onDelete={openDeleteMember} />
                   ))
                 )}
               </div>
@@ -459,6 +464,19 @@ function Admin() {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title={deleteConfirm?.kind === "team" ? "Delete Team" : "Remove Member"}
+        message={
+          deleteConfirm?.kind === "team"
+            ? <>Delete <strong>{deleteConfirm?.item?.name}</strong>? This team and its related data will be removed.</>
+            : <>Remove <strong>{deleteConfirm?.item?.name}</strong> from this team?</>
+        }
+        confirmLabel={deleteConfirm?.kind === "team" ? "Delete Team" : "Remove Member"}
+        onClose={closeDeleteConfirm}
+        onConfirm={confirmDelete}
+      />
 
       {toast && (
         <div className="toast-stack">
