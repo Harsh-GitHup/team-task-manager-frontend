@@ -1,4 +1,9 @@
-const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/$/, "");
+const normalizeBaseUrl = (value) => {
+    let url = String(value || "").trim();
+    // Strip any accidental spaces or comments pasted at the end
+    url = url.split(/\s+/)[0] || "";
+    return url.replace(/\/+$/, "");
+};
 
 export const getApiBaseUrl = () => {
     const runtimeConfig = globalThis.window?.__APP_CONFIG__ || {};
