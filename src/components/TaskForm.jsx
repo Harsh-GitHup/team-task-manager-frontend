@@ -234,25 +234,31 @@ function TaskForm({
                         <div style={{ fontSize: "12px", color: "var(--text3)" }}>No attachments yet.</div>
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                            {attachments.map(att => (
-                                <a
-                                    key={att.id}
-                                    href={new URL(att.file_path || `/uploads/${att.file_path}`, API.defaults.baseURL || undefined).toString()}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    style={{
-                                        display: "flex", alignItems: "center", gap: "8px",
-                                        padding: "8px 12px", background: "var(--bg3)",
-                                        borderRadius: "var(--radius-sm)", textDecoration: "none",
-                                        color: "var(--text)", border: "1px solid var(--border)", fontSize: "13px"
-                                    }}
-                                >
-                                    📄 {att.file_name}
-                                    <span style={{ marginLeft: "auto", fontSize: "11px", color: "var(--text3)" }}>
-                                        by {att.uploader_name}
-                                    </span>
-                                </a>
-                            ))}
+                            {attachments.map(att => {
+                                const cleanPath = String(att.file_path || "").replace(/^\/?uploads\//, "");
+                                const base = (API.defaults.baseURL || (typeof window !== "undefined" ? window.location.origin : "")).replace(/\/$/, "");
+                                const fileUrl = cleanPath ? `${base}/uploads/${cleanPath}` : "#";
+
+                                return (
+                                    <a
+                                        key={att.id}
+                                        href={fileUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        style={{
+                                            display: "flex", alignItems: "center", gap: "8px",
+                                            padding: "8px 12px", background: "var(--bg3)",
+                                            borderRadius: "var(--radius-sm)", textDecoration: "none",
+                                            color: "var(--text)", border: "1px solid var(--border)", fontSize: "13px"
+                                        }}
+                                    >
+                                        📄 {att.file_name}
+                                        <span style={{ marginLeft: "auto", fontSize: "11px", color: "var(--text3)" }}>
+                                            by {att.uploader_name}
+                                        </span>
+                                    </a>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

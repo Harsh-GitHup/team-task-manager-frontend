@@ -3,9 +3,14 @@ import PropTypes from "prop-types";
 import { AuthContext } from "./AuthContext";
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(
-        JSON.parse(localStorage.getItem("user"))
-    );
+    const [user, setUser] = useState(() => {
+        try {
+            const raw = localStorage.getItem("user");
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
+        }
+    });
 
     const login = (data) => {
         localStorage.setItem("token", data.token);

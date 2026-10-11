@@ -24,7 +24,8 @@ function Login() {
     try {
       const res = await API.post("/auth/login", { email, password });
       login(res.data);
-      globalThis.location.href = "/";
+      const redirectUrl = new URLSearchParams(globalThis.location?.search || "").get("redirect");
+      globalThis.location.href = redirectUrl || "/";
     } catch (err) {
       console.error('Login error', err);
       const msg =

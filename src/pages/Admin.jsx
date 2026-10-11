@@ -151,8 +151,16 @@ function Admin() {
       const res = await API.post("/invites", { team_id: selectedTeamId });
       // Build link on frontend using current origin to avoid localhost issues in deployment
       const inviteLink = `${globalThis.location.origin}/invite/${res.data.token}`;
-      await navigator.clipboard.writeText(inviteLink);
-      showToast("success", "Invite created", "Invite link copied to clipboard.");
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(inviteLink);
+          showToast("success", "Invite created", "Invite link copied to clipboard.");
+        } else {
+          showToast("success", "Invite created", `Invite: ${inviteLink}`);
+        }
+      } catch {
+        showToast("success", "Invite created", `Invite: ${inviteLink}`);
+      }
     } catch (err) { showToast("error", "Could not create invite", err.response?.data?.error || "Please try again."); }
   };
 
